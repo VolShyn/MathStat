@@ -33,7 +33,7 @@ menu_def = [['File', ['Open', 'Save', 'Exit']],
                        'Wilcoxon signed-rank', 'Sign', 'Single factor analysis of variance', 'Kruskal-Wallis (H)',
                        'T-test', ['1-sample', '2-sample']]],
             ['Help', ['Log()', 'Tests',
-                      ['Pearson', 'Kolmogorov', 'F-test', 'Bartletts', 'Wilcoxon', 'Sign', 'Single factor', 'H-test',
+                      ['Pearson', 'Kolmogorov', 'F-test', 'Bartletts test', 'Wilcoxon', 'Sign test', 'Single factor', 'H-test',
                        'T-test'], 'Anomalies', 'About...']]]
 
 layout = [

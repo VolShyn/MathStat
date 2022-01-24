@@ -136,7 +136,7 @@ def help_info(event):
             "A Statistical F Test uses an F Statistic to compare two variances, s1 and s2, by dividing them. The result is always a positive number (because variances are always positive). It is most often used when comparing statistical models that have been fitted to a data set, in order to identify the model that best fits the population from which the data were sampled. ",
             title='F-test', icon='math.ico', image='F-test.png')
 
-    if event == 'Bartletts':
+    if event == 'Bartletts test':
         sg.popup_no_buttons(
             "Bartlett's test is used to test the null hypothesis, H0 that all k population variances are equal against the alternative that at least two are different.",
             title='Bartletts', icon='math.ico', image='Bartletts.png')
@@ -146,7 +146,7 @@ def help_info(event):
             "The Wilcoxon signed-rank test is a non-parametric statistical hypothesis test used either to test the location of a set of samples or to compare the locations of two populations using a set of matched samples.[1] When applied to test the location of a set of samples, it serves the same purpose as the one-sample Student's t-test.[",
             title='Wilcoxon', icon='math.ico', image='Wilcoxon.png')
 
-    if event == 'Sign':
+    if event == 'Sign test':
         sg.popup_no_buttons(
             "The sign test is a statistical method to test for consistent differences between pairs of observations, such as the weight of subjects before and after treatment. Given pairs of observations (such as weight pre- and post-treatment) for each subject, the sign test determines if one member of the pair (such as pre-treatment) tends to be greater than (or less than) the other member of the pair (such as post-treatment).\n"
             "Procedure:\n"
