@@ -31,10 +31,10 @@ menu_def = [['File', ['Open', 'Save', 'Exit']],
             ['Edit', ['Standartize', 'Shift', 'Clear', ['Normal'], 'Undo'], ],
             ['Tests', ['Pearson Chi-squared', 'Kolmogorov-Smirnov', 'F-test for 2 variances', 'Bartletts',
                        'Wilcoxon signed-rank', 'Sign', 'Single factor analysis of variance', 'Kruskal-Wallis (H)',
-                       'T-test', ['Hypothesis', '2-sample']]],
+                       'T-test', ['1-sample', '2-sample']]],
             ['Help', ['Log()', 'Tests',
                       ['Pearson', 'Kolmogorov', 'F-test', 'Bartletts', 'Wilcoxon', 'Sign', 'Single factor', 'H-test',
-                       'T-test', ['Hyp.', '2-sample']], 'Anomalies', 'About...']]]
+                       'T-test'], 'Anomalies', 'About...']]]
 
 layout = [
     [sg.Menu(menu_def)],
