@@ -1,26 +1,26 @@
 import matplotlib.pyplot as plt
 import numpy as np
 import seaborn as sns
+
 # seaborn gives 'FutureWarning', importing warnings to get rid of it
+
 import warnings
 
 warnings.simplefilter(action='ignore', category=FutureWarning)
+
 from scipy import stats
 import PySimpleGUI as sg
 from stats import *
 
+arr = []
+temp = []
+dimension = 0
 
-def statistic_analysis(data):
-    text = ''
-    text += 'Length: ' + str(len(data)) + '\nSumm: ' + str(round(sum(data), 2)) + '\nMax: ' + str(
-        round(max(data), 5)) + '\nMin: ' + str(
-        round(min(data), 5)) + '\nScale: ' + str(
-        scale(data)) + '\nMean: ' + str(mean(data)) + '\nMed: ' + str(med(data)) + '\nVar: ' + str(
-        var(data)) + '\nStDev: ' + str(standart_d(data)) + '\nAsym: '
-    return text + str(asymmetry(data)) + '\nEcs: ' + str(
-        kurtosis(data)) + '\nCEcs: ' + str(
-        c_kurtosis(data)) + '\nVarPirs: ' + str(pirson(data)) + '\nMedU: ' + str(med_oul(data)) + '\nQuantiles: ' + str(
-        quant(data))
+
+def statistic_analysis(data, text=''):
+    text += 'Length: ' + f'{len(data)}' + '\nSumm: ' + f'{sum(data):.2f}' + '\nMax: ' + f'{max(data):.4f}' + '\nMin: ' + f'{min(data):.4f}' + '\nScale: ' + f'{max(data) - min(data):.4f}' + '\nMean: ' + f'{statistics.mean(data):.4f}' + '\nMed: ' + f'{statistics.median(data)}' + '\nVar: ' + f'{statistics.variance(data):.4f}' + '\nStDev: ' + f'{statistics.stdev(data):.4f}' + '\nAsym: '
+    return text + asymmetry(data) + '\nEcs: ' + f'{kurtosis(data):.4f}' + '\nCEcs: ' + c_kurtosis(
+        data) + '\nVarPirs: ' + pirson(data) + '\nMedU: ' + f'{med_oul(data):.4f}' + '\nQuantiles: ' + quant(data)
 
 
 sg.theme("Default1")
@@ -33,22 +33,21 @@ menu_def = [['File', ['Open', 'Save', 'Exit']],
                        'Wilcoxon signed-rank', 'Sign', 'Single factor analysis of variance', 'Kruskal-Wallis (H)',
                        'T-test', ['1-sample', '2-sample']]],
             ['Help', ['Log()', 'Tests',
-                      ['Pearson', 'Kolmogorov', 'F-test', 'Bartletts test', 'Wilcoxon', 'Sign test', 'Single factor', 'H-test',
+                      ['Pearson', 'Kolmogorov', 'F-test', 'Bartletts test', 'Wilcoxon', 'Sign test', 'Single factor',
+                       'H-test',
                        'T-test'], 'Anomalies', 'About...']]]
 
 layout = [
     [sg.Menu(menu_def)],
     [sg.Multiline(tooltip='Statistical analysis', size=(15, 40), key='-out-', disabled=True, no_scrollbar=True,
-                  font='Courier 12'), sg.Image('mathstat.png', pad=(105,15), key='-Image-')],
+                  font='Courier 12'), sg.Image('mathstat.png', pad=(105, 15), key='-Image-')],
 ]
 
 window = sg.Window('Mathematical Statistics', layout, resizable=False, finalize=True, font="Courier 10",
                    icon='math.ico',
                    default_element_size=(6, 1),
                    default_button_element_size=(10, 1), size=(600, 400))
-arr = []
-temp = []
-dimension = 0
+
 while True:
     event, values = window.read()
     help_info(event)
@@ -75,18 +74,21 @@ while True:
     if event == 'Shift':
         try:
             if arr[0] is not None:
-                step = sg.PopupGetText('Shift step:')
-                arr = arr + int(step)
-                window['-out-'].update(statistic_analysis(arr))
+                if dimension == 1:
+                    step = sg.PopupGetText('Shift step:', title='Shift', icon='math.ico')
+                    arr = arr + int(step)
+                    window['-out-'].update(statistic_analysis(arr))
+                else:
+                    sg.popup('Only for 1-dimension')
         except:
             sg.popup_quick('Some error occured.\nNO DATA!', icon='math.ico')
             pass
 
     if event == 'Standartize':
         try:
-            if arr[0] is not None:
+            if dimension == 1:
                 last_event = event
-                arr = (arr - mean(arr)) / standart_d(arr)
+                arr = (arr - statistics.mean(arr)) / statistics.stdev(arr)
                 window['-out-'].update(statistic_analysis(arr))
         except:
             sg.popup('Some error occured.', icon='math.ico')
@@ -97,6 +99,14 @@ while True:
             if arr[0] is not None:
                 window['-out-'].update('')
                 arr = []
+                try:
+                    arr1 = []
+                except:
+                    pass
+                try:
+                    arr2 = []
+                except:
+                    pass
         except:
             sg.popup_quick('Some error occured.\nNO DATA!')
             pass
@@ -115,18 +125,18 @@ while True:
                 arr = np.sort(np.loadtxt(path))
                 sg.popup_ok('1-dimensional', icon='math.ico')
 
-            # anom = find_anomalies(arr)
-            # find_anomalies(arr1)
+            if dimension == 1:
+                anom = find_anomalies(arr)
+                # check for anomalies by 3-sigma rule
+                if anom:
+                    for anomaly in anom:
+                        for item in arr:
+                            if float(anomaly) == float(item):
+                                arr = np.delete(arr, np.where(arr == item))
+                    sg.popup('Anomalies where found and deleted!\n'
+                             f'{anom}')
 
-            # check for anomalies by 3-sigma rule
-
-            # if anom:
-            #     for anomaly in anom:
-            #         for item in arr:
-            #             if float(anomaly) == float(item):
-            #                 arr = np.delete(arr, np.where(arr == item))
-            #     sg.popup('Anomalies where found and deleted!\n'
-            #              f'{anom}')
+            # temporary arr to undo standartize
             temp = arr
             window['-out-'].update(statistic_analysis(arr))
         except:
@@ -146,19 +156,17 @@ while True:
 
     if event == 'Graph':
         """
-        
         x = np.linspace(min(arr), max(arr), len(arr))
-        plt.plot(x, norm.pdf(x, mean(arr), standart_d(arr)), color='red', linewidth=2)
+        plt.plot(x, norm.pdf(x, mean(arr), statistics_stdev(arr)), color='red', linewidth=2)
         plt.hist(arr, bins=(int(len(arr) ** (1 / 2))), weights=np.zeros_like(arr) + 1 / len(arr),
                 edgecolor='#E6E6E6')
-        pdf = normpdf(x,mean(arr), standart_d(arr))
+        pdf = normpdf(x,mean(arr), statistics_stdev(arr))
         plt.step(arr, np.arange(len(arr)) / float(len(arr)), linewidth=3)
         plt.plot(arr, np.arange(len(arr)) / float(len(arr)), color='red', linewidth=1)
         
-        plt.plot(x, norm.pdf(x, mean(arr), standart_d(arr)), color='red', linewidth=2)
+        plt.plot(x, norm.pdf(x, mean(arr), statistics_stdev(arr)), color='red', linewidth=2)
                     plt.hist(arr, bins=(int(len(arr) ** (1 / 2))), weights=np.zeros_like(arr) + 1 / len(arr),
                              edgecolor='#E6E6E6')
-        
         """
         try:
             if arr[0] is not None:
@@ -184,26 +192,30 @@ while True:
                 plt.ylabel('Frequency', fontsize=12)
                 plt.tick_params(axis='both', which='major', labelsize=14)
                 '''
-                
                 bins = sqrt(N) if N > 100
                 bins = N ** 1/3
-                
                 '''
-                x = np.linspace(min(arr), max(arr), len(arr))
+                x = np.linspace(min(arr), max(arr), len(arr))  # linspace(0,1,5) == array(0,0.25,0.5,0.75,1)
                 if len(arr) <= 100:
                     sns.distplot(arr, bins=(int(len(arr) ** (1 / 2))), kde=True,
-                                 hist_kws={'alpha': 0.6, 'color': 'g'})
+                                 hist_kws={'alpha': 0.6, 'color': 'g'},
+                                 kde_kws={'alpha': 0.8, 'color': 'black'})
                     x = np.linspace(min(arr), max(arr), int(len(arr) ** (1 / 2)))
                 else:
                     sns.distplot(arr, bins=(int(len(arr) ** (1 / 3)) - 1), kde=True,
-                                 hist_kws={'alpha': 0.6, 'color': 'g'})
-                    x = np.linspace(min(arr), max(arr), int(len(arr) ** (1 / 3)) - 1)
+                                 hist_kws={'alpha': 0.6, 'color': 'g'},
+                                 kde_kws={'alpha': 0.8, 'color': 'black'})
+                    x = np.linspace(min(arr), max(arr), int(len(arr) ** (1 / 3)))
 
                 # making emperical graph
 
                 plt.subplot(2, 1, 2)
+                ci1 = [x * 0.95 for x in arr]  # confidence interval 0.95 from down
+                ci2 = [x * 1.05 for x in arr]  # confidence interval from up
                 sns.ecdfplot(x)
-                sns.ecdfplot(arr)
+                sns.kdeplot(ci1, cumulative=True)
+                sns.kdeplot(arr, cumulative=True)
+                sns.kdeplot(ci2, cumulative=True)
                 plt.xlabel('Value', fontsize=12)
                 plt.ylabel('Frequency', fontsize=12)
                 plt.tick_params(axis='both', which='major', labelsize=14)

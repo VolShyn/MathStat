@@ -2,54 +2,38 @@ import numpy as np
 import PySimpleGUI as sg
 import statistics
 
-
-def scale(data):
-    return round(max(data) - min(data), 4)
-
-
-def med(data):
-    return round(statistics.median(data), 4)
-
-
-def var(data):
-    return round(statistics.variance(data), 4)
-
-
-def mean(data):
-    return round(statistics.mean(data), 4)
-
-
-def standart_d(data):
-    return round(statistics.stdev(data), 4)
-
-
+#Asymmetry
 def asymmetry(data):
     buf = 0
     k = 0
+    s = statistics.stdev(data)
+    m = statistics.mean(data)
     while (k < len(data)):
-        buf += (data[k] - mean(data)) ** 3
+        buf += (data[k] - m) ** 3
         k += 1
-    asymmetry = (buf / len(data)) / standart_d(data) ** 3
-    return round(asymmetry, 4)
+    asymmetry = (buf / len(data)) / s ** 3
+    return f'{asymmetry:.4f}'
 
-
+#Ecs
 def kurtosis(data):
     buf = 0
     k = 0
+    m = statistics.mean(data)
+    s = statistics.stdev(data)
     while (k < len(data)):
-        buf += (data[k] - mean(data)) ** 4
+        buf += (data[k] - m) ** 4
         k += 1
-    kurtosis = (buf / len(data)) / standart_d(data) ** 4
-    return round(kurtosis, 4)
+    kurtosis = (buf / len(data)) / s ** 4
+    return round(kurtosis,4)
 
 
 def c_kurtosis(data):
-    return round(1 / abs(kurtosis(data)) ** 0.5, 4)
+    return f'{1 / abs(kurtosis(data)) ** 0.5:.4f}'
 
 
 def pirson(data):
-    if mean(data) != 0:
-        return round(standart_d(data) / mean(data), 4)
+    if statistics.mean(data) != 0:
+        return f'{statistics.stdev(data) / statistics.mean(data):.4f}'
     else:
         return 'Mean=0'
 
@@ -60,17 +44,19 @@ def med_oul(data):
 
 def quant(data):
     try:
-        temp = [round(x, 2) for x in statistics.quantiles(data)]
-        return temp
+        # temp = [round(x, 2) for x in statistics.quantiles(data)]
+        return str(list(map(lambda x: f'{x:.2f}', statistics.quantiles(data))))
     except:
         pass
 
 
 def find_anomalies(data):
     anomalies = []
-    anomaly_cut_off = standart_d(data) * 3
-    lower_limit = mean(data) - anomaly_cut_off
-    upper_limit = mean(data) + anomaly_cut_off
+    s = statistics.stdev(data)
+    m = statistics.mean(data)
+    anomaly_cut_off = s * 3
+    lower_limit = m - anomaly_cut_off
+    upper_limit = m + anomaly_cut_off
     for outlier in data:
         if outlier > upper_limit or outlier < lower_limit:
             anomalies.append(outlier)
@@ -112,7 +98,8 @@ def check_for_columns(txt):
 
 def help_info(event):
     if event == 'Anomalies':
-        sg.Popup('Anomalies is auto-detected', title='Anomalies', icon='math.ico')
+        sg.Popup('Anomalies is auto-detected\n'
+                 '*only for 1-dimension', title='Anomalies', icon='math.ico')
 
     if event == 'Log()':
         sg.popup('You can logarithm in figure settings.\n', title='Log()', icon='math.ico')
