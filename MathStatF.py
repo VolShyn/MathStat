@@ -7,7 +7,6 @@ import seaborn as sns
 from scipy import stats
 import PySimpleGUI as sg
 from stats import *
-
 # seaborn gives 'FutureWarning', importing warnings to get rid of it
 
 import warnings

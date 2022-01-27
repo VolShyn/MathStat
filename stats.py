@@ -260,7 +260,8 @@ def two_dimens_graph(X, Y):
     f.set_figwidth(8)
     f.set_figheight(8)
     plt.subplot(2, 1, 1)
-    sns.regplot(X, Y)
+    sns.regplot(X, Y, scatter_kws={"s": 80},
+                 order=2, ci=None)
     plt.subplot(2, 1, 2)
     sns.set_theme(style="dark")
     sns.histplot(x=X, y=Y)
