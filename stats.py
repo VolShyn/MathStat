@@ -1,8 +1,25 @@
 import numpy as np
 import PySimpleGUI as sg
 import statistics
+import seaborn as sns
+import scipy
+import phik
+from matplotlib import pyplot as plt
+from sklearn.metrics import matthews_corrcoef
+from mlxtend.evaluate import cochrans_q
+from scipy.stats import uniform, expon
 
-#Asymmetry
+'''
+Below is some functions to calculate one dimension
+'''
+
+
+def one_dim_analysis(data, text=''):
+    text += 'Length: ' + f'{len(data)}' + '\nSumm: ' + f'{abs(sum(data)):.2f}' + '\nMax: ' + f'{max(data):.4f}' + '\nMin: ' + f'{min(data):.4f}' + '\nScale: ' + f'{max(data) - min(data):.4f}' + '\nMean: ' + f'{abs(statistics.mean(data)):.4f}' + '\nMed: ' + f'{statistics.median(data):.4f}' + '\nVar: ' + f'{statistics.variance(data):.4f}' + '\nStDev: ' + f'{statistics.stdev(data):.4f}' + '\nAsym: '
+    return text + asymmetry(data) + '\nEcs: ' + f'{kurtosis(data):.4f}' + '\nCEcs: ' + c_kurtosis(
+        data) + '\nPirsCor: ' + pearson(data) + '\nMedU: ' + f'{med_oul(data):.4f}' + '\nQuantiles: ' + quant(data)
+
+
 def asymmetry(data):
     buf = 0
     k = 0
@@ -14,7 +31,7 @@ def asymmetry(data):
     asymmetry = (buf / len(data)) / s ** 3
     return f'{asymmetry:.4f}'
 
-#Ecs
+
 def kurtosis(data):
     buf = 0
     k = 0
@@ -24,16 +41,19 @@ def kurtosis(data):
         buf += (data[k] - m) ** 4
         k += 1
     kurtosis = (buf / len(data)) / s ** 4
-    return round(kurtosis,4)
+    return round(kurtosis, 4)
 
 
 def c_kurtosis(data):
     return f'{1 / abs(kurtosis(data)) ** 0.5:.4f}'
 
 
-def pirson(data):
-    if statistics.mean(data) != 0:
-        return f'{statistics.stdev(data) / statistics.mean(data):.4f}'
+def pearson(data):
+    if np.mean(data) != 0:
+        res = np.std(data) / np.mean(data)
+        if 0 <= res <= 1:
+            return f'{res:.4f}'
+        return 'None'
     else:
         return 'Mean=0'
 
@@ -54,7 +74,10 @@ def find_anomalies(data):
     anomalies = []
     s = statistics.stdev(data)
     m = statistics.mean(data)
-    anomaly_cut_off = s * 3
+    if len(data) <= 100:
+        anomaly_cut_off = s * 3
+    else:
+        anomaly_cut_off = s * 2
     lower_limit = m - anomaly_cut_off
     upper_limit = m + anomaly_cut_off
     for outlier in data:
@@ -73,27 +96,176 @@ def normpdf(x, mean, sd):
     return num / denom
 
 
-def check_for_columns(txt):
-    try:
-        test2 = []
-        test1 = []
-        try:
-            test, test1, test2 = np.loadtxt(txt, unpack=True)
-        except ValueError:
-            pass
-        try:
-            test, test1 = np.loadtxt(txt, unpack=True)
-        except ValueError:
-            pass
+def exponential_inverse_trans(data_size, mean=1):
+    U = uniform.rvs(size=data_size)
+    actual = expon.rvs(size=data_size, scale=mean)
+    return actual
 
-        if type(test2) != list:
-            return 3
-        elif type(test1) != list:
-            return 2
-        else:
-            return 1
-    except:
-        return 0
+
+def one_dimens_graph(arr):
+    plt.style.context('seaborn')
+    f = plt.figure(tight_layout=True)
+    f.set_figwidth(8)
+    f.set_figheight(8)
+    sns.set_theme(style="whitegrid")
+    plt.subplot(2, 1, 1)
+    plt.grid(b=True, color='grey',
+             linestyle='-.', linewidth=0.5,
+             alpha=0.6)
+    plt.xlim([min(arr) - (min(arr) * 0.1), max(arr) + (min(arr) * 0.1)])
+    plt.xlabel('Value', fontsize=12)
+    plt.ylabel('Frequency', fontsize=12)
+    plt.tick_params(axis='both', which='major', labelsize=14)
+
+    x = np.linspace(min(arr), max(arr), len(arr))  # linspace(0,1,5) == array(0,0.25,0.5,0.75,1)
+
+    if len(arr) <= 100:
+        sns.distplot(arr, bins=(int(len(arr) ** (1 / 2))), kde=True,
+                     hist_kws={'alpha': 0.6, 'color': 'g'},
+                     kde_kws={'alpha': 0.8, 'color': 'black'})
+        x = np.linspace(min(arr), max(arr), int(len(arr) ** (1 / 2)))
+    else:
+        sns.distplot(arr, bins=(int(len(arr) ** (1 / 3)) - 1), kde=True,
+                     hist_kws={'alpha': 0.6, 'color': 'g'},
+                     kde_kws={'alpha': 0.8, 'color': 'black'})
+        x = np.linspace(min(arr), max(arr), int(len(arr) ** (1 / 3)))
+
+    # making emperical graph
+
+    plt.subplot(2, 1, 2)
+    ci1 = [x * 0.95 for x in arr]  # confidence interval 0.95 from down
+    ci2 = [x * 1.05 for x in arr]  # confidence interval from up
+    sns.ecdfplot(x)
+    sns.kdeplot(ci1, cumulative=True)
+    sns.kdeplot(arr, cumulative=True)
+    sns.kdeplot(ci2, cumulative=True)
+    plt.xlabel('Value', fontsize=12)
+    plt.ylabel('Frequency', fontsize=12)
+    plt.tick_params(axis='both', which='major', labelsize=14)
+    plt.show()
+
+
+'''
+Below is functions to calculate 2D
+'''
+
+
+def two_dim_analysis(X, Y, text=''):
+    # cov(X, Y) = (sum (x - mean(X)) * (y - mean(Y)) ) * 1/(n-1)
+    return 'Length: ' + f'{len(X)}' + '\nMean(X): ' + f'{np.mean(X):.4f}' + '\nMean(Y): ' + f'{np.mean(Y):.4f}' + '\nSt.Dev(X): ' + f'{np.std(X):.4f}' + '\nSt.Dev(Y): ' + f'{np.std(Y):.4f}' + '\nCorr: ' + pearson_corr(
+        X, Y) + '\nSpearman: ' + spearman_correlation(X, Y) + '\nKendall: ' + kendall_correlation(X,
+                                                                                                  Y) + '\nQ: ' + f'{q(X, Y):.4f}' + '\nY: ' + f'{y(X, Y):.4f}' + '\n(I)Fehn: ' + f'{i(X, Y):.4f}'
+    # return text
+
+
+def covariation(X, Y):
+    # cov = (sum(x - statistics.mean(X)) * (y - statistics.mean(Y))) * 1 / (n - 1)
+    cov1, cov2 = np.cov(X, Y)
+    return f'{cov1[1]}'
+
+
+def pearson_corr(X, Y):
+    corr1 = np.corrcoef(X, Y)
+    return f'{corr1[0][1]:.4f}'
+
+
+def spearman_correlation(X, Y):
+    # return f'{np.cov(np.rank(X), np.rank(Y)) / (np.std(np.rank(X)) * np.std(np.rank(Y)))}:.4f'
+    coeff, p = scipy.stats.spearmanr(X, Y)
+    return f'{coeff:.4f}'
+
+
+def kendall_correlation(X, Y):
+    coeff, p = scipy.stats.kendalltau(X, Y)
+    return f'{coeff:.4f}'
+
+
+def table_create(X, Y):
+    table = np.empty((2, 2))
+    for i in range(len(X)):
+        if X[i] <= np.mean(X) and Y[i] <= np.mean(Y): table[0][0] += 1
+        if X[i] > np.mean(X) and Y[i] <= np.mean(Y): table[0][1] += 1
+        if X[i] <= np.mean(X) and Y[i] > np.mean(Y): table[1][0] += 1
+        if X[i] > np.mean(X) and Y[i] > np.mean(Y): table[1][1] += 1
+    return table
+
+
+def q(X, Y):
+    table = table_create(X, Y)
+    q = (table[0, 0] * table[1, 1] - table[0, 1] * table[1, 0]) / (
+            table[0, 0] * table[1, 1] + table[0, 1] * table[1, 0])
+    return q
+
+
+def y(X, Y):
+    table = table_create(X, Y)
+    y = (math.sqrt(table[0, 0] * table[1, 1]) - math.sqrt(table[0, 1] * table[1, 0])) / (
+            math.sqrt(table[0, 0] * table[1, 1]) + math.sqrt(table[0, 1] * table[1, 0]))
+    return y
+
+
+def i(X, Y):
+    table = table_create(X, Y)
+    i = (table[0, 0] + table[1, 1] - table[1, 0] - table[0, 1]) / (
+            table[0, 0] + table[1, 1] + table[1, 0] + table[0, 1])
+    return i
+
+
+def phi_coef(X, Y):
+    pass
+
+
+def kolmogorov_1dim(X):
+    statistic, pvalue = scipy.stats.kstest(X, 'norm')
+    return f'{statistic:.6f}\npvalue: {pvalue:.6f}'
+
+
+def kolmogorov_2dim(X, Y):
+    statistic, pvalue = scipy.stats.ks_2samp(X, Y)
+    return f'{statistic:.6f}\n'
+
+
+def bartletts(X, Y):
+    statistic, pvalue = scipy.stats.bartlett(X, Y)
+    return f'Value: {statistic:.4f}\npvalue: {pvalue:.6f}'
+
+
+def sign(data):
+    N_plus = 0
+    N_minus = 0
+    m = statistics.mean(data)
+    for i in range(len(data)):
+        if data[i] > m:
+            N_plus += 1
+        elif data[i] < m:
+            N_minus += 1
+    try:
+        p = scipy.stats.binomtest(min(N_plus, N_minus), N_plus + N_minus, 0.5).pvalue
+    except AttributeError:
+        p = scipy.stats.binom_test(min(N_plus, N_minus), N_plus + N_minus, 0.5)
+    M = (N_plus - N_minus) / 2
+    return f'M: {M}\npvalue: {p:.4f}'
+
+
+
+def chi_squared(X):
+    # x = np.linspace(X)
+    statistic, pvalue = scipy.stats.chisquare(X)
+    return f'{statistic:.6f}\npvalue: {pvalue:.6f}'
+
+
+def two_dimens_graph(X, Y):
+    sns.set_theme(style="dark")
+    f = plt.figure(tight_layout=True)
+    f.set_figwidth(8)
+    f.set_figheight(8)
+    plt.subplot(2, 1, 1)
+    sns.regplot(X, Y)
+    plt.subplot(2, 1, 2)
+    sns.set_theme(style="dark")
+    sns.histplot(x=X, y=Y)
+    sns.kdeplot(x=X, y=Y, color="black", linewidths=1)
+    plt.show()
 
 
 def help_info(event):
@@ -107,6 +279,9 @@ def help_info(event):
     if event == 'About...':
         sg.popup('This program was build by V.Shynkarov', title='About', icon='math.ico')
 
+    if event == 'General average':
+        sg.popup_no_buttons('Check hypothesis about equality of average in population',
+                            title='General average', icon='math.ico', image='Pearson.png')
     if event == 'Pearson':
         sg.popup_no_buttons(
             "The chi-square test for independence, also called Pearson's chi-square test or the chi-square test of association, is used to discover if there is a relationship between two categorical variables.",
@@ -155,4 +330,35 @@ def help_info(event):
             "Essentially, a t-test allows us to compare the average values of the two data sets and determine if they came from the same population. In the above examples, if we were to take a sample of students from class A and another sample of students from class B, we would not expect them to have exactly the same mean and standard deviation. Similarly, samples taken from the placebo-fed control group and those taken from the drug prescribed group should have a slightly different mean and standard deviation.Mathematically, the t-test takes a sample from each of the two sets and establishes the problem statement by assuming a null hypothesis that the two means are equal. Based on the applicable formulas, certain values are calculated and compared against the standard values, and the assumed null hypothesis is accepted or rejected accordingly. \n"
             "\n"
             "**Exists 1-sample and 2-sample t-tests, check formula",
-            title='1-sample', icon='math.ico', image='T-test.png')
+            title='t-test', icon='math.ico', image='T-test.png')
+    if event == 'Laplace table':
+        sg.popup_no_buttons('',
+                            title='Laplace table', icon='math.ico', image='Laplas.png')
+    if event == 'Inverse transform sampling':
+        sg.popup_no_buttons(
+            'Is a basic method for pseudo-random number sampling, i.e., for generating sample numbers at random from any probability distribution given its cumulative distribution function.\n'
+            '*In programm only normal and exponential variants are available',
+            title='Inversion sampling', icon='math.ico', image='')
+
+
+def check_for_columns(txt):
+    try:
+        test2 = []
+        test1 = []
+        try:
+            test, test1, test2 = np.loadtxt(txt, unpack=True)
+        except ValueError:
+            pass
+        try:
+            test, test1 = np.loadtxt(txt, unpack=True)
+        except ValueError:
+            pass
+
+        if type(test2) != list:
+            return 3
+        elif type(test1) != list:
+            return 2
+        else:
+            return 1
+    except:
+        return 0
