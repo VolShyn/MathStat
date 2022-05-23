@@ -1,13 +1,14 @@
 import numpy as np
+import pandas as pd
 import PySimpleGUI as sg
 import statistics
 import seaborn as sns
 import scipy
-import phik
+import plotly.express as px
+import plotly.graph_objects as go
 from matplotlib import pyplot as plt
-from sklearn.metrics import matthews_corrcoef
-from mlxtend.evaluate import cochrans_q
 from scipy.stats import uniform, expon
+from sklearn.metrics import mean_squared_error
 
 '''
 Below is some functions to calculate one dimension
@@ -17,7 +18,7 @@ Below is some functions to calculate one dimension
 def one_dim_analysis(data, text=''):
     text += 'Length: ' + f'{len(data)}' + '\nSumm: ' + f'{abs(sum(data)):.2f}' + '\nMax: ' + f'{max(data):.4f}' + '\nMin: ' + f'{min(data):.4f}' + '\nScale: ' + f'{max(data) - min(data):.4f}' + '\nMean: ' + f'{abs(statistics.mean(data)):.4f}' + '\nMed: ' + f'{statistics.median(data):.4f}' + '\nVar: ' + f'{statistics.variance(data):.4f}' + '\nStDev: ' + f'{statistics.stdev(data):.4f}' + '\nAsym: '
     return text + asymmetry(data) + '\nEcs: ' + f'{kurtosis(data):.4f}' + '\nCEcs: ' + c_kurtosis(
-        data) + '\nPirsCor: ' + pearson(data) + '\nMedU: ' + f'{med_oul(data):.4f}' + '\nQuantiles: ' + quant(data)
+        data) + '\nVariation: ' + pearson(data) + '\nMedU: ' + f'{med_oul(data):.4f}' + '\nQuantiles: ' + quant(data)
 
 
 def asymmetry(data):
@@ -83,6 +84,7 @@ def find_anomalies(data):
     for outlier in data:
         if outlier > upper_limit or outlier < lower_limit:
             anomalies.append(outlier)
+
     return anomalies
 
 
@@ -121,12 +123,12 @@ def one_dimens_graph(arr):
 
     if len(arr) <= 100:
         sns.distplot(arr, bins=(int(len(arr) ** (1 / 2))), kde=True,
-                     hist_kws={'alpha': 0.6, 'color': 'g'},
+                     hist_kws={'alpha': 0.6, 'color': 'pink'},
                      kde_kws={'alpha': 0.8, 'color': 'black'})
         x = np.linspace(min(arr), max(arr), int(len(arr) ** (1 / 2)))
     else:
         sns.distplot(arr, bins=(int(len(arr) ** (1 / 3)) - 1), kde=True,
-                     hist_kws={'alpha': 0.6, 'color': 'g'},
+                     hist_kws={'alpha': 0.6, 'color': 'pink'},
                      kde_kws={'alpha': 0.8, 'color': 'black'})
         x = np.linspace(min(arr), max(arr), int(len(arr) ** (1 / 3)))
 
@@ -150,12 +152,11 @@ Below is functions to calculate 2D
 '''
 
 
-def two_dim_analysis(X, Y, text=''):
+def two_dim_analysis(X, Y):
     # cov(X, Y) = (sum (x - mean(X)) * (y - mean(Y)) ) * 1/(n-1)
     return 'Length: ' + f'{len(X)}' + '\nMean(X): ' + f'{np.mean(X):.4f}' + '\nMean(Y): ' + f'{np.mean(Y):.4f}' + '\nSt.Dev(X): ' + f'{np.std(X):.4f}' + '\nSt.Dev(Y): ' + f'{np.std(Y):.4f}' + '\nCorr: ' + pearson_corr(
         X, Y) + '\nSpearman: ' + spearman_correlation(X, Y) + '\nKendall: ' + kendall_correlation(X,
                                                                                                   Y) + '\nQ: ' + f'{q(X, Y):.4f}' + '\nY: ' + f'{y(X, Y):.4f}' + '\n(I)Fehn: ' + f'{i(X, Y):.4f}'
-    # return text
 
 
 def covariation(X, Y):
@@ -247,7 +248,6 @@ def sign(data):
     return f'M: {M}\npvalue: {p:.4f}'
 
 
-
 def chi_squared(X):
     # x = np.linspace(X)
     statistic, pvalue = scipy.stats.chisquare(X)
@@ -261,7 +261,7 @@ def two_dimens_graph(X, Y):
     f.set_figheight(8)
     plt.subplot(2, 1, 1)
     sns.regplot(X, Y, scatter_kws={"s": 80},
-                 order=2, ci=None)
+                order=2, ci=None)
     plt.subplot(2, 1, 2)
     sns.set_theme(style="dark")
     sns.histplot(x=X, y=Y)
@@ -363,3 +363,169 @@ def check_for_columns(txt):
             return 1
     except:
         return 0
+
+
+def three_dim_analysis(X, Y, Z):
+    return 'Length\n' + f'X:{len(X)}\nY:{len(Y)}\nZ:{len(Z)}\n' + '\nMean(X): ' + f'{abs(np.mean(X)):.4f}' + '\nMean(Y): ' + f'{abs(np.mean(Y)):.4f}' + '\nMean(Z): ' + f'{abs(np.mean(Z)):.4f}' + '\nSt.Dev(X): ' + f'{np.std(X):.4f}' + '\nSt.Dev(Y): ' + f'{np.std(Y):.4f}' + '\nSt.Dev(Z): ' + f'{np.std(Z):.4f}'
+
+
+def datafr(ar, ar1, ar2):
+    index = [i for i in range(len(ar))]
+    d = {'X': ar, 'Y': ar1, 'Z': ar2}
+    return pd.DataFrame(data=d, index=index)
+
+
+def scatter_matrix(X, Y, Z):
+    # making pands dataframe
+    df = datafr(X, Y, Z)
+    sns.set_palette('colorblind')
+    sns.pairplot(data=df, height=3)
+    plt.show()
+
+
+def parallel_coord(X, Y, Z):
+    df = datafr(X, Y, Z)
+    df.reset_index(inplace=True)
+    pd.plotting.parallel_coordinates(df, 'index', cols=['X', 'Y', 'Z'])
+    plt.gca().legend_.remove()
+    plt.show()
+
+
+def diagnos_diag(X, Y, Z):
+    fig = plt.figure(figsize=(8, 8))
+    ax = fig.add_subplot(projection='3d')
+    ax.scatter(X, Y, Z)
+    plt.show()
+
+
+def linear_reg3d(X, Y, Z):
+    from sklearn import linear_model
+    df = datafr(X, Y, Z)
+    X = df[['X', 'Y']].values.reshape(-1, 2)
+    Y = df['Z']
+
+    x = X[:, 0]
+    y = X[:, 1]
+    z = Y
+
+    xx_pred = np.linspace(abs(np.min(x)), abs(np.max(x)), 30)  # range of price values
+    yy_pred = np.linspace(abs(np.min(y)), abs(np.max(y)), 30)  # range of advertising values
+    xx_pred, yy_pred = np.meshgrid(xx_pred, yy_pred)
+
+    model_viz = np.array([xx_pred.flatten(), yy_pred.flatten()]).T
+    ols = linear_model.LinearRegression()
+    model = ols.fit(X, Y)
+    predicted = model.predict(model_viz)
+    r2 = model.score(X, Y)
+    plt.style.use('seaborn-colorblind')
+    fig = plt.figure(figsize=(8, 8))
+    ax = fig.add_subplot(111, projection='3d')
+    ax.plot(x, y, z, color='k', zorder=15, linestyle='none', marker='o', alpha=0.5)
+    ax.scatter(xx_pred.flatten(), yy_pred.flatten(), predicted, facecolor=(0, 0, 0, 0), s=20, edgecolor='#70b3f0')
+    ax.set_xlabel('X', fontsize=12)
+    ax.set_ylabel('Y', fontsize=12)
+    ax.set_zlabel('Z', fontsize=12)
+    ax.locator_params(nbins=4, axis='x')
+    ax.locator_params(nbins=5, axis='x')
+    fig.suptitle('Regression model  ($R^2 = %.2f$)' % r2, fontsize=15, color='k')
+
+    fig.tight_layout()
+    plt.show()
+
+
+def corr_matr(X, Y, Z):
+    df = datafr(X, Y, Z)
+    corr = df[['X', 'Y', 'Z']].corr()
+    sg.popup_no_titlebar(f'Correlation:\n{corr}')
+
+    # making mask
+    mask = np.zeros_like(corr, dtype=np.bool)
+    np.fill_diagonal(mask, val=True)
+
+    fig, ax = plt.subplots(figsize=(4, 3))
+
+    cmap = sns.diverging_palette(220, 10, as_cmap=True, sep=100)
+    cmap.set_bad('grey')
+
+    sns.heatmap(corr, mask=mask, cmap=cmap, vmin=-1, vmax=1, center=0, linewidths=.5)
+    fig.suptitle('Pearson correlation coefficient matrix', fontsize=14)
+    ax.tick_params(axis='both', which='major', labelsize=10)
+
+    plt.show()
+
+
+def heatmap(X, Y, Z):
+    newX = np.linspace(min(X), max(X), 5)
+    newY = np.linspace(min(Y), max(Y), 5)
+    newZ = np.linspace(min(Z), max(Z), 5)
+    df = datafr(newX, newY, newZ)
+    sns.heatmap(df)
+    plt.show()
+
+
+def radar(X, Y, Z):
+    # df = datafr(X,Y,Z)
+    newX = np.linspace(min(X), max(X), 5)
+    newY = np.linspace(min(Y), max(Y), 5)
+    newZ = np.linspace(min(Z), max(Z), 5)
+    label_loc = np.linspace(start=0, stop=2 * np.pi, num=len(X))
+    plt.figure(figsize=(8, 8))
+    plt.subplot(polar=True)
+    plt.plot(label_loc, X, label='X')
+    plt.plot(label_loc, Y, label='Y')
+    plt.plot(label_loc, Z, label='Z')
+    plt.title('Radar diagram', size=20)
+    lines, labels = plt.thetagrids(np.degrees(label_loc))
+    plt.legend()
+    plt.show()
+
+
+def bubbleplot(X, Y, Z):
+    colors = np.random.rand(len(X))
+    Z = np.array(Z)
+    Z = Z.astype(int)
+    d = {'X': X, 'Y': Y, 'Colors': colors, 'Bubble size': Z}
+    df = pd.DataFrame(data=d)
+
+    plt.scatter('X', 'Y',
+                s='Bubble size',
+                alpha=0.5,
+                c='Colors',
+                data=df)
+    plt.xlabel("X", size=16)
+    plt.ylabel("y", size=16)
+    plt.title("Bubble Plot ", size=18)
+    plt.show()
+
+
+def barplot(X, Y, Z):
+    df = datafr(X, Y, Z)
+    fig = go.Figure()
+
+    fig.add_trace(go.Barpolar(
+        r=list(df['X']),
+        #     theta = list(df['Col']),
+        name='X',
+        marker_color='rgb(106,81,163)'
+    ))
+    fig.add_trace(go.Barpolar(
+        r=list(df['Y']),
+        #     theta = list(df['Col']),
+        name='Y',
+        marker_color='rgb(158,154,200)'
+    ))
+    fig.add_trace(go.Barpolar(
+        r=list(df['Z']),
+        #     theta = list(df['Col']),
+        name='Z',
+        marker_color='rgb(203,201,226)'
+    ))
+
+    fig.update_layout(
+        title='Найтінгейл',
+        font_size=16,
+        legend_font_size=16,
+        polar_angularaxis_rotation=90,
+
+    )
+    fig.show()
