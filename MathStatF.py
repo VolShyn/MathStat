@@ -5,6 +5,7 @@ import matplotlib.pyplot as plt
 import numpy as np
 import seaborn as sns
 from scipy import stats
+from sklearn import linear_model
 import PySimpleGUI as sg
 from stats import *
 
@@ -22,11 +23,12 @@ sg.SetOptions(element_padding=(3, 3))
 
 menu_def = [['File', ['Open', 'Save', 'Exit']],
             ['Show', ['Graph', 'For multi-dim',
-                      ['Scatter matrix', 'Linear Regression', 'Corr.Matr', 'Parallel Coords', 'Heatmap',
+                      ['Scatter matrix', 'Linear Regression', 'Parallel Coords', 'Heatmap',
                        'Diagnostic diagram', 'Bubble plot']]],
             ['Edit', ['Standartize', 'Shift', 'Clear', 'Undo'], ],
             ['Tests',
-             ['General Average', 'Pearson Chi-squared', 'Kolmogorov-Smirnov', 'F-test for 2 variances', 'Bartletts',
+             ['Corr.Matr', 'General Average', 'Pearson Chi-squared', 'ЁKolmogorov-Smirnov', 'F-test for 2 variances',
+              'Bartletts',
               'Wilcoxon signed-rank', 'Sign', 'Single factor analysis of variance', 'Kruskal-Wallis (H)',
               'T-test', ['1-sample', '2-sample',
                          ['2-dimensions', '1-dimension (Inverse method)', ['Exp', 'PDF(Normal)']]]]],
@@ -40,14 +42,13 @@ layout = [
     [sg.Menu(menu_def)],
     [sg.Multiline(tooltip='Statistical analysis', size=(18, 40), key='-out-', disabled=True, no_scrollbar=True,
                   font='Courier 12'),
-     sg.Image('mathstat.png', pad=(105, 50), key='-Image-', visible=True),
      sg.Multiline(size=(80, 30), visible=False, key='-FILE-')]
 ]
 
-window = sg.Window('Mathematical Statistics', layout, resizable=False, finalize=True, font="Courier 10",
+window = sg.Window('Mathematical Statistics', layout, resizable=True, finalize=True, font="Courier 12",
                    icon='math.ico',
                    default_element_size=(6, 1),
-                   default_button_element_size=(10, 1), size=(600, 400))
+                   default_button_element_size=(10, 1), size=(800, 450))
 
 # x = [random.random() for i in range(1, 25)]
 # y = [random.random() for i in range(1, 25)]
@@ -58,9 +59,7 @@ while True:
 
     if event == 'General Average':
         try:
-            if dimension == 3:
-                sg.popup('You need 2-dimensional array (T-test)', title='Oops!', icon='math.ico')
-            elif dimension == 2:
+            if dimension == 2:
                 Z_t, pvalue = stats.ttest_ind(arr, arr1)
                 alpha = sg.popup_get_text('Statistical significance(alpha): ', title='Statistical significance',
                                           icon='math.ico')
@@ -97,9 +96,7 @@ while True:
 
     if event == 'F-test for 2 variances':
         try:
-            if dimension == 3:
-                pass
-            elif dimension == 2:
+            if dimension == 2:
                 pvar = statistics.pvariance(arr)
                 pvar1 = statistics.pvariance(arr1)
                 if pvar > pvar1:
@@ -107,19 +104,16 @@ while True:
                 else:
                     sg.popup_ok(f'F-test: {pvar1 / pvar:.4f}', title='Answer', icon='math.ico')
             else:
-                sg.popup('You need atleast 2-dimensional array', title='Oops!', icon='math.ico')
+                sg.popup('You need 2-dimensional array', title='Oops!', icon='math.ico')
         except:
             pass
 
     if event == 'Bartletts':
         try:
-            if dimension == 3:
-                statistic, pvalue = scipy.stats.bartlett(arr, arr1, arr2)
-                sg.popup(f'Stat B: {statistic:.4f}\npvalue: {pvalue:.6f}', title='Answer', icon='math.ico')
             if dimension == 2:
                 sg.popup(f'{bartletts(arr, arr1)}', title='Answer', icon='math.ico')
             else:
-                sg.popup('You need atleast 2-dimensional array', title='Oops!', icon='math.ico')
+                sg.popup('You need 2-dimensional array', title='Oops!', icon='math.ico')
         except:
             pass
 
@@ -147,27 +141,21 @@ while True:
 
     if event == 'Single factor analysis of variance':
         try:
-            if dimension == 3:
-                fvalue, pvalue = stats.f_oneway(arr, arr1, arr2)
-                sg.popup(f'fvalue: {fvalue:.6f}\npvalue: {pvalue:.6f}', title='Answer', icon='math.ico')
-            elif dimension == 2:
+            if dimension == 2:
                 fvalue, pvalue = stats.f_oneway(arr, arr1)
                 sg.popup(f'fvalue: {fvalue:.6f}\npvalue: {pvalue:.6f}', title='Answer', icon='math.ico')
             else:
-                sg.popup('You need atleast 2-dimensional array', title='Oops!', icon='math.ico')
+                sg.popup('You need 2-dimensional array', title='Oops!', icon='math.ico')
         except:
             pass
 
     if event == 'Kruskal-Wallis (H)':
         try:
-            if dimension == 3:
-                st, pvalue = scipy.stats.kruskal(arr, arr1, arr2)
-                sg.popup(f'H: {st:.6f}\npvalue: {pvalue:.6f}', title='Answer', icon='math.ico')
-            elif dimension == 2:
+            if dimension == 2:
                 st, pvalue = scipy.stats.kruskal(arr, arr1)
                 sg.popup(f'H: {st:.6f}\npvalue: {pvalue:.6f}', title='Answer', icon='math.ico')
             else:
-                sg.popup('You need atleast 2-dimensional array', title='Oops!', icon='math.ico')
+                sg.popup('You need 2-dimensional array', title='Oops!', icon='math.ico')
         except:
             pass
 
@@ -200,8 +188,8 @@ while True:
     if event == '2-dimensions':
         try:
             if arr[0] is not None:
-                if dimension == 3:
-                    sg.popup_ok('Oops! You have 3-dimensional array.', title='Oops!', icon='math.ico')
+                if dimension > 2:
+                    sg.popup_ok('Oops! You have Multi-dimensional array.', title='Oops!', icon='math.ico')
                 if dimension == 2:
                     try:
                         t, pvalue = stats.ttest_ind(arr, arr1)
@@ -276,7 +264,6 @@ while True:
             if arr[0] is not None:
                 window['-out-'].update('')
                 arr = []
-                window['-Image-'].update(visible=True)
                 window['-FILE-'].update(visible=False)
                 try:
                     arr2 = []
@@ -292,17 +279,11 @@ while True:
             path = sg.popup_get_file('Open...', icon='math.ico')
             dimension = check_for_columns(path)
             if dimension > 2:
-                arr, arr1, arr2 = np.loadtxt(path, unpack=True)
-                df = datafr(arr, arr1, arr2)
-                sg.popup_ok('3-dimensional', icon='math.ico')
-                window['-out-'].update(three_dim_analysis(arr, arr1, arr2))
-                window['-FILE-'].update(df.head(len(arr)))
+                df = pd.read_fwf(path, header=None)
+                sg.popup_ok('Multi-dimensional', icon='math.ico')
+                # window['-out-'].update(three_dim_analysis(arr, arr1, arr2))
+                window['-FILE-'].update(df.head(len(df[0])))
 
-                # T = np.array([arr, arr1, arr2])
-                # reshaper = []
-                # for i in range(len(arr)):
-                #     reshaper.append(str(T[0:3, i]))
-                # reshaper.clear()
             elif dimension == 2:
                 arr2 = []
                 arr, arr1 = np.loadtxt(path, unpack=True)
@@ -337,7 +318,6 @@ while True:
                 window['-out-'].update(one_dim_analysis(arr))
                 window['-FILE-'].update(arr.reshape((len(arr), 1)))
 
-            window['-Image-'].update(visible=False)
             window['-FILE-'].update(visible=True)
 
         except:
@@ -360,78 +340,145 @@ while True:
 
     if event == 'Scatter matrix':
         try:
-            scatter_matrix(arr, arr1, arr2)
+            sns.set_palette('colorblind')
+            sns.pairplot(df, height=3)
+            plt.show()
         except:
-            sg.popup('Something went wrong', icon='math.ico')
+            sg.popup('Something went wrong', title = 'Oops', icon='math.ico')
             pass
 
     if event == 'Linear Regression':
         try:
-            linear_reg3d(arr, arr1, arr2)
+            X,Y = ''.join(sg.popup_get_text('X,Y?').split())
+            col = ''.join(sg.popup_get_text('Z?').split())
+            X = df[[int(X), int(Y)]].values.reshape(-1, 2)
+            Y = df[int(col[0])]
+
+            x = X[:, 0]
+            y = X[:, 1]
+            z = Y
+
+            xx_pred = np.linspace(abs(np.min(x)), abs(np.max(x)), 30)  # range of price values
+            yy_pred = np.linspace(abs(np.min(y)), abs(np.max(y)), 30)  # range of advertising values
+            xx_pred, yy_pred = np.meshgrid(xx_pred, yy_pred)
+
+            model_viz = np.array([xx_pred.flatten(), yy_pred.flatten()]).T
+            ols = linear_model.LinearRegression()
+            model = ols.fit(X, Y)
+            predicted = model.predict(model_viz)
+            r2 = model.score(X, Y)
+            plt.style.use('seaborn-colorblind')
+            fig = plt.figure(figsize=(8, 8))
+            ax = fig.add_subplot(111, projection='3d')
+            ax.plot(x, y, z, color='r', zorder=15, linestyle='none', marker='x', alpha=0.7)
+            ax.scatter(xx_pred.flatten(), yy_pred.flatten(), predicted, facecolor=(0, 0, 0, 0), s=20,
+                       edgecolor='#70b3f0')
+            ax.set_xlabel('X', fontsize=12)
+            ax.set_ylabel('Y', fontsize=12)
+            ax.set_zlabel('Z', fontsize=12)
+            ax.locator_params(nbins=4, axis='x')
+            ax.locator_params(nbins=5, axis='x')
+            fig.suptitle('Regression model  ($R^2 = %.2f$)' % r2, fontsize=15, color='k')
+
+            fig.tight_layout()
+            plt.show()
         except:
-            sg.popup('Something went wrong', icon='math.ico')
+            sg.popup('Something went wrong', title='Oops', icon='math.ico')
             pass
 
     if event == 'Corr.Matr':
         try:
-            corr_matr(arr, arr1, arr2)
+            corr = df.corr()
+            sg.Print(f'{corr}', size=(65, 10), font='Courier 12', no_titlebar=True, resizable=True, grab_anywhere=True)
+
+            # making mask
+            mask = np.zeros_like(corr, dtype=bool)
+            np.fill_diagonal(mask, val=True)
+
+            fig, ax = plt.subplots(figsize=(6, 4))
+
+            cmap = sns.diverging_palette(220, 10, as_cmap=True, sep=100)
+            cmap.set_bad('grey')
+
+            sns.heatmap(corr, mask=mask, cmap=cmap, vmin=-1, vmax=1, center=0, linewidths=.5)
+            fig.suptitle('Pearson correlation coefficient matrix', fontsize=14)
+            ax.tick_params(axis='both', which='major', labelsize=10)
+
+            plt.show()
+        except:
+            sg.popup('Something went wrong', title='Oops', icon='math.ico')
+            pass
+
+    if event == 'Parallel Coords':
+        try:
+            # Копія через функцію, щоб не були пов'язані, бо ресетаємо індекси, не треба нам такого в ориг. датафреймі
+            df1 = df.copy()
+            df1.reset_index(inplace=True)
+            pd.plotting.parallel_coordinates(df1, 'index')
+            plt.gca().legend_.remove()
+            plt.show()
         except:
             sg.popup('Something went wrong', icon='math.ico')
             pass
 
-    # if event == 'Radar':
-    #     try:
-    #         radar(arr, arr1, arr2)
-    #     except:
-    #         pass
-
-    if event == 'Parallel Coords':
-        # try:
-        #     parallel_coord(arr, arr1, arr2)
-        # except:
-        #     sg.popup('Something went wrong', icon='math.ico')
-        #     pass
-        parallel_coord(arr,arr1,arr2)
-
     if event == 'Diagnostic diagram':
         try:
-            diagnos_diag(arr, arr1, arr2)
+            col = ''.join(sg.popup_get_text('Which columns do yo want?').split())
+            fig = plt.figure(figsize=(8, 8))
+            ax = fig.add_subplot(111)
+            ax.scatter(df[int(col[0])], df[int(col[1])], marker='x', c='r')
+            ax.set_xlabel('{col}'.format(col=col[0]))
+            ax.set_ylabel('{col1}'.format(col1=col[1]))
+            plt.show()
         except:
-            sg.popup('Something went wrong', icon='math.ico')
+            sg.popup('Something went wrong', title='Oops', icon='math.ico')
             pass
 
     if event == 'Heatmap':
         try:
-            heatmap(arr, arr1, arr2)
+            sns.heatmap(df[0:10], annot=True, fmt=".1f")
+            plt.show()
         except:
-            sg.popup('Something went wrong', icon='math.ico')
+            sg.popup('Something went wrong', title='Oops', icon='math.ico')
             pass
 
     if event == 'Bubble plot':
         try:
-            bubbleplot(arr, arr1, arr2)
-        except:
-            sg.popup('Something went wrong', icon='math.ico')
-            pass
+            # Х,Y,Z ввод. користувачем, після чого Z перетвор. у матрицю цілих чисел
+            # Робимо новий датафрейм з X,Y,Z користувача, колір рандом, розмір бульбашок - Z
 
-    if event == 'Barplot':
-        try:
-            barplot(arr, arr1, arr2)
+            X,Y = ''.join(sg.popup_get_text('Arguments(X,Y)?').split())
+            col = ''.join(sg.popup_get_text('Bubble Size(Z)').split())
+            colors = np.random.rand(len(df[0]))
+            col = np.array(df[int(col[0])])
+            col = col.astype(int)
+
+            d = pd.DataFrame({'X': df[int(X)], 'Y': df[int(Y)], 'Colors': colors, 'Bubble size': col})
+            plt.scatter('X', 'Y',
+                        s='Bubble size',
+                        alpha=0.5,
+                        c='Colors',
+                        data=d)
+            plt.xlabel("X", size=16)
+            plt.ylabel("y", size=16)
+            plt.title("Bubble Plot ", size=18)
+            plt.show()
         except:
-            sg.popup('Something went wrong', icon='math.ico')
+            sg.popup('Something went wrong', title='Oops', icon='math.ico')
             pass
 
     if event == 'Graph':
         try:
-            if arr[0] is not None:
-                if dimension > 2:
-                    sg.popup('You have multidimensional array', title='Oops', icon='math.ico')
-                if dimension == 2:
-                    two_dimens_graph(arr, arr1)
-                if dimension == 1:
-                    one_dimens_graph(arr)
+            if dimension > 2:
+                sg.popup('You have multi-dimensional array', title='Oops', icon='math.ico')
+            elif dimension == 2:
+                two_dimens_graph(arr, arr1)
+            elif dimension == 1:
+                one_dimens_graph(arr)
+            else:
+                sg.popup_quick('NO DATA.', title='Oops', icon='math.ico')
         except:
-            sg.popup_quick('Some error occured.\nNO DATA!', icon='math.ico')
+            sg.popup_quick('Some error occured.', title='Ooops', icon='math.ico')
 
     if event == sg.WIN_CLOSED or event == 'Exit':
         break

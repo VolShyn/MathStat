@@ -9,6 +9,7 @@ import plotly.graph_objects as go
 from matplotlib import pyplot as plt
 from scipy.stats import uniform, expon
 from sklearn.metrics import mean_squared_error
+import math
 
 '''
 Below is some functions to calculate one dimension
@@ -86,9 +87,6 @@ def find_anomalies(data):
             anomalies.append(outlier)
 
     return anomalies
-
-
-import math
 
 
 def normpdf(x, mean, sd):
@@ -273,13 +271,10 @@ def help_info(event):
     if event == 'Anomalies':
         sg.Popup('Anomalies is auto-detected\n'
                  '*only for 1-dimension', title='Anomalies', icon='math.ico')
-
     if event == 'Log()':
         sg.popup('You can logarithm in figure settings.\n', title='Log()', icon='math.ico')
-
     if event == 'About...':
         sg.popup('This program was build by V.Shynkarov', title='About', icon='math.ico')
-
     if event == 'General average':
         sg.popup_no_buttons('Check hypothesis about equality of average in population',
                             title='General average', icon='math.ico', image='Pearson.png')
@@ -287,28 +282,23 @@ def help_info(event):
         sg.popup_no_buttons(
             "The chi-square test for independence, also called Pearson's chi-square test or the chi-square test of association, is used to discover if there is a relationship between two categorical variables.",
             title='Pearson', icon='math.ico', image='Pearson.png')
-
     if event == 'Kolmogorov':
         sg.popup_no_buttons(
             "Kolmogorov–Smirnov test (K–S test or KS test): is used to decide if a sample comes from a population with a specific distribution.one-dimensional probability distributions that can be used to compare a sample with a reference probability distribution (one-sample K–S test), or to compare two samples (two-sample K–S test). In essence, the test answers the question 'What is the probability that this collection of samples could have been drawn from that probability distribution?' or, in the second case, 'What is the probability that these two sets of samples were drawn from the same (but unknown) probability distribution?'\n"
             "\n*Func for 1-sample and 2-sample test",
             title='Kolmogorov', icon='math.ico', image='kolmogorov.png')
-
     if event == 'F-test':
         sg.popup_no_buttons(
             "A Statistical F Test uses an F Statistic to compare two variances, s1 and s2, by dividing them. The result is always a positive number (because variances are always positive). It is most often used when comparing statistical models that have been fitted to a data set, in order to identify the model that best fits the population from which the data were sampled. ",
             title='F-test', icon='math.ico', image='F-test.png')
-
     if event == 'Bartletts test':
         sg.popup_no_buttons(
             "Bartlett's test is used to test the null hypothesis, H0 that all k population variances are equal against the alternative that at least two are different.",
             title='Bartletts', icon='math.ico', image='Bartletts.png')
-
     if event == 'Wilcoxon':
         sg.popup_no_buttons(
             "The Wilcoxon signed-rank test is a non-parametric statistical hypothesis test used either to test the location of a set of samples or to compare the locations of two populations using a set of matched samples.[1] When applied to test the location of a set of samples, it serves the same purpose as the one-sample Student's t-test.[",
             title='Wilcoxon', icon='math.ico', image='Wilcoxon.png')
-
     if event == 'Sign test':
         sg.popup_no_buttons(
             "The sign test is a statistical method to test for consistent differences between pairs of observations, such as the weight of subjects before and after treatment. Given pairs of observations (such as weight pre- and post-treatment) for each subject, the sign test determines if one member of the pair (such as pre-treatment) tends to be greater than (or less than) the other member of the pair (such as post-treatment).\n"
@@ -344,20 +334,11 @@ def help_info(event):
 
 def check_for_columns(txt):
     try:
-        test2 = []
-        test1 = []
-        try:
-            test, test1, test2 = np.loadtxt(txt, unpack=True)
-        except ValueError:
-            pass
-        try:
-            test, test1 = np.loadtxt(txt, unpack=True)
-        except ValueError:
-            pass
-
-        if type(test2) != list:
-            return 3
-        elif type(test1) != list:
+        checkcol = pd.read_fwf(txt)
+        count_col = checkcol.shape[1]  # Gives number of columns
+        if count_col >= 3:
+            return count_col
+        elif count_col == 2:
             return 2
         else:
             return 1
@@ -369,163 +350,6 @@ def three_dim_analysis(X, Y, Z):
     return 'Length\n' + f'X:{len(X)}\nY:{len(Y)}\nZ:{len(Z)}\n' + '\nMean(X): ' + f'{abs(np.mean(X)):.4f}' + '\nMean(Y): ' + f'{abs(np.mean(Y)):.4f}' + '\nMean(Z): ' + f'{abs(np.mean(Z)):.4f}' + '\nSt.Dev(X): ' + f'{np.std(X):.4f}' + '\nSt.Dev(Y): ' + f'{np.std(Y):.4f}' + '\nSt.Dev(Z): ' + f'{np.std(Z):.4f}'
 
 
-def datafr(ar, ar1, ar2):
-    index = [i for i in range(len(ar))]
-    d = {'X': ar, 'Y': ar1, 'Z': ar2}
-    return pd.DataFrame(data=d, index=index)
 
 
-def scatter_matrix(X, Y, Z):
-    # making pands dataframe
-    df = datafr(X, Y, Z)
-    sns.set_palette('colorblind')
-    sns.pairplot(data=df, height=3)
-    plt.show()
 
-
-def parallel_coord(X, Y, Z):
-    df = datafr(X, Y, Z)
-    df.reset_index(inplace=True)
-    pd.plotting.parallel_coordinates(df, 'index', cols=['X', 'Y', 'Z'])
-    plt.gca().legend_.remove()
-    plt.show()
-
-
-def diagnos_diag(X, Y, Z):
-    fig = plt.figure(figsize=(8, 8))
-    ax = fig.add_subplot(projection='3d')
-    ax.scatter(X, Y, Z)
-    plt.show()
-
-
-def linear_reg3d(X, Y, Z):
-    from sklearn import linear_model
-    df = datafr(X, Y, Z)
-    X = df[['X', 'Y']].values.reshape(-1, 2)
-    Y = df['Z']
-
-    x = X[:, 0]
-    y = X[:, 1]
-    z = Y
-
-    xx_pred = np.linspace(abs(np.min(x)), abs(np.max(x)), 30)  # range of price values
-    yy_pred = np.linspace(abs(np.min(y)), abs(np.max(y)), 30)  # range of advertising values
-    xx_pred, yy_pred = np.meshgrid(xx_pred, yy_pred)
-
-    model_viz = np.array([xx_pred.flatten(), yy_pred.flatten()]).T
-    ols = linear_model.LinearRegression()
-    model = ols.fit(X, Y)
-    predicted = model.predict(model_viz)
-    r2 = model.score(X, Y)
-    plt.style.use('seaborn-colorblind')
-    fig = plt.figure(figsize=(8, 8))
-    ax = fig.add_subplot(111, projection='3d')
-    ax.plot(x, y, z, color='k', zorder=15, linestyle='none', marker='o', alpha=0.5)
-    ax.scatter(xx_pred.flatten(), yy_pred.flatten(), predicted, facecolor=(0, 0, 0, 0), s=20, edgecolor='#70b3f0')
-    ax.set_xlabel('X', fontsize=12)
-    ax.set_ylabel('Y', fontsize=12)
-    ax.set_zlabel('Z', fontsize=12)
-    ax.locator_params(nbins=4, axis='x')
-    ax.locator_params(nbins=5, axis='x')
-    fig.suptitle('Regression model  ($R^2 = %.2f$)' % r2, fontsize=15, color='k')
-
-    fig.tight_layout()
-    plt.show()
-
-
-def corr_matr(X, Y, Z):
-    df = datafr(X, Y, Z)
-    corr = df[['X', 'Y', 'Z']].corr()
-    sg.popup_no_titlebar(f'Correlation:\n{corr}')
-
-    # making mask
-    mask = np.zeros_like(corr, dtype=np.bool)
-    np.fill_diagonal(mask, val=True)
-
-    fig, ax = plt.subplots(figsize=(4, 3))
-
-    cmap = sns.diverging_palette(220, 10, as_cmap=True, sep=100)
-    cmap.set_bad('grey')
-
-    sns.heatmap(corr, mask=mask, cmap=cmap, vmin=-1, vmax=1, center=0, linewidths=.5)
-    fig.suptitle('Pearson correlation coefficient matrix', fontsize=14)
-    ax.tick_params(axis='both', which='major', labelsize=10)
-
-    plt.show()
-
-
-def heatmap(X, Y, Z):
-    newX = np.linspace(min(X), max(X), 5)
-    newY = np.linspace(min(Y), max(Y), 5)
-    newZ = np.linspace(min(Z), max(Z), 5)
-    df = datafr(newX, newY, newZ)
-    sns.heatmap(df)
-    plt.show()
-
-
-def radar(X, Y, Z):
-    # df = datafr(X,Y,Z)
-    newX = np.linspace(min(X), max(X), 5)
-    newY = np.linspace(min(Y), max(Y), 5)
-    newZ = np.linspace(min(Z), max(Z), 5)
-    label_loc = np.linspace(start=0, stop=2 * np.pi, num=len(X))
-    plt.figure(figsize=(8, 8))
-    plt.subplot(polar=True)
-    plt.plot(label_loc, X, label='X')
-    plt.plot(label_loc, Y, label='Y')
-    plt.plot(label_loc, Z, label='Z')
-    plt.title('Radar diagram', size=20)
-    lines, labels = plt.thetagrids(np.degrees(label_loc))
-    plt.legend()
-    plt.show()
-
-
-def bubbleplot(X, Y, Z):
-    colors = np.random.rand(len(X))
-    Z = np.array(Z)
-    Z = Z.astype(int)
-    d = {'X': X, 'Y': Y, 'Colors': colors, 'Bubble size': Z}
-    df = pd.DataFrame(data=d)
-
-    plt.scatter('X', 'Y',
-                s='Bubble size',
-                alpha=0.5,
-                c='Colors',
-                data=df)
-    plt.xlabel("X", size=16)
-    plt.ylabel("y", size=16)
-    plt.title("Bubble Plot ", size=18)
-    plt.show()
-
-
-def barplot(X, Y, Z):
-    df = datafr(X, Y, Z)
-    fig = go.Figure()
-
-    fig.add_trace(go.Barpolar(
-        r=list(df['X']),
-        #     theta = list(df['Col']),
-        name='X',
-        marker_color='rgb(106,81,163)'
-    ))
-    fig.add_trace(go.Barpolar(
-        r=list(df['Y']),
-        #     theta = list(df['Col']),
-        name='Y',
-        marker_color='rgb(158,154,200)'
-    ))
-    fig.add_trace(go.Barpolar(
-        r=list(df['Z']),
-        #     theta = list(df['Col']),
-        name='Z',
-        marker_color='rgb(203,201,226)'
-    ))
-
-    fig.update_layout(
-        title='Найтінгейл',
-        font_size=16,
-        legend_font_size=16,
-        polar_angularaxis_rotation=90,
-
-    )
-    fig.show()
