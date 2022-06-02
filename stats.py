@@ -252,18 +252,15 @@ def chi_squared(X):
     return f'{statistic:.6f}\npvalue: {pvalue:.6f}'
 
 
-def two_dimens_graph(X, Y):
-    sns.set_theme(style="dark")
+def two_dimens_graph(dataframe):
     f = plt.figure(tight_layout=True)
-    f.set_figwidth(8)
-    f.set_figheight(8)
+    f.set_figwidth(10)
+    f.set_figheight(10)
     plt.subplot(2, 1, 1)
-    sns.regplot(X, Y, scatter_kws={"s": 80},
-                order=2, ci=None)
+    sns.regplot(x=dataframe['X'], y=dataframe['Y'], marker='+', ci=70)
     plt.subplot(2, 1, 2)
-    sns.set_theme(style="dark")
-    sns.histplot(x=X, y=Y)
-    sns.kdeplot(x=X, y=Y, color="black", linewidths=1)
+    sns.histplot(x=dataframe['X'], y=dataframe['Y'])
+    sns.kdeplot(x=dataframe['X'], y=dataframe['Y'], color='black', linewidths=2)
     plt.show()
 
 
@@ -346,10 +343,17 @@ def check_for_columns(txt):
         return 0
 
 
-def three_dim_analysis(X, Y, Z):
-    return 'Length\n' + f'X:{len(X)}\nY:{len(Y)}\nZ:{len(Z)}\n' + '\nMean(X): ' + f'{abs(np.mean(X)):.4f}' + '\nMean(Y): ' + f'{abs(np.mean(Y)):.4f}' + '\nMean(Z): ' + f'{abs(np.mean(Z)):.4f}' + '\nSt.Dev(X): ' + f'{np.std(X):.4f}' + '\nSt.Dev(Y): ' + f'{np.std(Y):.4f}' + '\nSt.Dev(Z): ' + f'{np.std(Z):.4f}'
-
-
-
-
+def describing(df, desc=''):
+    colN = int(df.shape[1])
+    for i in range(colN):
+        desc += f'max {str(df.describe()[i][7])}' + '\n' + str(df.describe()[i][1:4])
+        desc += '\n'
+    words = desc.split()
+    for i in range(colN):
+        words.remove('dtype:')
+        words.remove('float64')
+    desc=''
+    for i in range(0, len(words), 2):
+        desc += str(words[i]) + ' ' + str(words[i + 1] + '\n')
+    return desc
 

@@ -7,6 +7,8 @@ import seaborn as sns
 from scipy import stats
 from sklearn import linear_model
 import PySimpleGUI as sg
+import kaleido
+import cv2
 from stats import *
 
 # seaborn gives 'FutureWarning', importing warnings to get rid of it
@@ -22,16 +24,17 @@ sg.theme("Default1")
 sg.SetOptions(element_padding=(3, 3))
 
 menu_def = [['File', ['Open', 'Save', 'Exit']],
-            ['Show', ['Graph', 'For multi-dim',
+            ['Show', ['Graph', '---', 'For multi-dim',
                       ['Scatter matrix', 'Linear Regression', 'Parallel Coords', 'Heatmap',
                        'Diagnostic diagram', 'Bubble plot']]],
             ['Edit', ['Standartize', 'Shift', 'Clear', 'Undo'], ],
             ['Tests',
-             ['Corr.Matr', 'General Average', 'Pearson Chi-squared', 'ЁKolmogorov-Smirnov', 'F-test for 2 variances',
-              'Bartletts',
-              'Wilcoxon signed-rank', 'Sign', 'Single factor analysis of variance', 'Kruskal-Wallis (H)',
+             ['Corr.Matr', 'Partial Corr.', 'Multiple Corr.', '---', 'General Average', 'Kruskal-Wallis (H)', 'F-test for 2 variances',
+              'Single factor analysis of variance',
+              'Bartletts', 'Kolmogorov-Smirnov',
+              'Wilcoxon signed-rank', '---', 'Sign', 'Pearson Chi-squared',
               'T-test', ['1-sample', '2-sample',
-                         ['2-dimensions', '1-dimension (Inverse method)', ['Exp', 'PDF(Normal)']]]]],
+                         ['2-dimensions', '1-dimension (Inverse method)', ['Exp']]]]],
             ['Help', ['Log()', 'Tests',
                       ['General average', 'Pearson', 'Kolmogorov', 'F-test', 'Bartletts test', 'Wilcoxon', 'Sign test',
                        'Single factor',
@@ -49,9 +52,6 @@ window = sg.Window('Mathematical Statistics', layout, resizable=True, finalize=T
                    icon='math.ico',
                    default_element_size=(6, 1),
                    default_button_element_size=(10, 1), size=(800, 450))
-
-# x = [random.random() for i in range(1, 25)]
-# y = [random.random() for i in range(1, 25)]
 
 while True:
     event, values = window.read()
@@ -161,14 +161,15 @@ while True:
 
     if event == 'Undo':
         try:
+            if dimension == 1:
+                arr = temp
+                window['-out-'].update(one_dim_analysis(arr))
+            else:
+                df = dfcop
+                window['-FILE-'].update(df)
             last_event = event
-            arr = temp
-            window['-out-'].update(one_dim_analysis(arr))
         except:
             sg.popup_quick('Nothing to undo!', title='Undo', icon='math.ico')
-
-    if event == 'PDF(Normal)':
-        sg.popup('No realization for now, sorry :-(')
 
     if event == 'Exp':
         try:
@@ -238,38 +239,32 @@ while True:
 
     if event == 'Standartize':
         try:
-            if arr[0] is not None:
+            if dimension == 1:
                 last_event = event
                 arr = (arr - statistics.mean(arr)) / statistics.stdev(arr)
                 window['-out-'].update(one_dim_analysis(arr))
-                try:
-                    arr2 = (arr2 - statistics.mean(arr2)) / statistics.stdev(arr2)
-                    arr1 = (arr1 - statistics.mean(arr1)) / statistics.stdev(arr1)
-                    window['-out-'].update(three_dim_analysis(arr, arr1, arr2))
-                except:
-                    try:
-                        arr1 = (arr1 - statistics.mean(arr1)) / statistics.stdev(arr1)
-                        window['-out-'].update(two_dim_analysis(arr, arr1))
-                    except:
-                        pass
-            # else:
-            #     sg.popup('Only for 1-dimension', icon='math.ico')
-
+            else:
+                dfcop = df.copy()
+                df[0] = stats.zscore(df[0])
+                for (colName, colData) in dfcop.iteritems():
+                    df[colName] = stats.zscore(df[colName])
+                window['-FILE-'].update(df)
         except:
             sg.popup('Some error occured.', icon='math.ico')
             pass
 
     if event == 'Clear':
         try:
-            if arr[0] is not None:
-                window['-out-'].update('')
-                arr = []
-                window['-FILE-'].update(visible=False)
-                try:
-                    arr2 = []
-                    arr1 = []
-                except:
-                    arr1 = []
+            window['-out-'].update('')
+            arr = []
+            window['-FILE-'].update(visible=False)
+            df = 0
+            dimension = 0
+            try:
+                arr2 = []
+                arr1 = []
+            except:
+                arr1 = []
         except:
             sg.popup_quick('Some error occured.\nNO DATA!')
             pass
@@ -281,13 +276,13 @@ while True:
             if dimension > 2:
                 df = pd.read_fwf(path, header=None)
                 sg.popup_ok('Multi-dimensional', icon='math.ico')
-                # window['-out-'].update(three_dim_analysis(arr, arr1, arr2))
                 window['-FILE-'].update(df.head(len(df[0])))
+                window['-out-'].update(describing(df))
 
             elif dimension == 2:
                 arr2 = []
                 arr, arr1 = np.loadtxt(path, unpack=True)
-                d = {'X': arr, 'Y': arr1}
+                d = {0: arr, 1: arr1}
                 df = pd.DataFrame(data=d)
 
                 sg.popup_ok('2-dimensional', icon='math.ico')
@@ -305,7 +300,9 @@ while True:
                 arr = np.sort(np.loadtxt(path))
                 sg.popup_ok('1-dimensional', icon='math.ico')
                 anom = find_anomalies(arr)
-                # check for anomalies by 3-sigma rule
+                """
+                3-sigma rule for anomalies
+                """
                 if anom:
                     for anomaly in anom:
                         for item in arr:
@@ -326,15 +323,20 @@ while True:
 
     if event == 'Save':
         try:
-            if arr[0] is not None:
-                if dimension == 1:
-                    with open('sortedarray.txt', 'w') as f:
-                        for item in arr:
-                            f.write(str(item) + '\n')
-                    sg.popup('File saved as:\n'
-                             'sortedarray.txt', icon='math.ico')
-                else:
-                    sg.popup_quick('Only for 1-dim', icon='math.ico')
+            if dimension > 2:
+                np.savetxt('saveMn.txt', df.values, fmt='%4f')
+                sg.popup('File saved as:\n'
+                         'saveMn.txt', title='Completed', icon='math.ico')
+            elif dimension == 2:
+                np.savetxt('save2n.txt', df.values, fmt='%4f')
+                sg.popup('File saved as:\n'
+                         'save2n.txt', title='Completed', icon='math.ico')
+            elif dimension == 1:
+                with open('save1n.txt', 'w') as f:
+                    for item in arr:
+                        f.write(str(item) + '\n')
+                sg.popup('File saved as:\n'
+                         'sortedarray.txt', title='Completed', icon='math.ico')
         except:
             sg.popup_quick('Nothing to save', icon='math.ico')
 
@@ -344,13 +346,20 @@ while True:
             sns.pairplot(df, height=3)
             plt.show()
         except:
-            sg.popup('Something went wrong', title = 'Oops', icon='math.ico')
+            sg.popup('Something went wrong', title='Oops', icon='math.ico')
             pass
 
     if event == 'Linear Regression':
+        """
+        try щоб прога не вилітала при кожній помилці, іф для роботи лише з N-вимір. вибірками
+        Як фичерсы беремо X. Будуємо площину через xx_pred,  yy_pred... Далі підставляємо модель, і будуємо графік 
+        """
         try:
-            X,Y = ''.join(sg.popup_get_text('X,Y?').split())
-            col = ''.join(sg.popup_get_text('Z?').split())
+            if dimension > 2:
+                X, Y = ''.join(
+                    sg.popup_get_text('Attributes?', title='Attributes (Independent)', icon='math.ico').split())
+                col = ''.join(sg.popup_get_text('Label?', title='Label (Dependent)', icon='math.ico').split())
+
             X = df[[int(X), int(Y)]].values.reshape(-1, 2)
             Y = df[int(col[0])]
 
@@ -358,8 +367,26 @@ while True:
             y = X[:, 1]
             z = Y
 
-            xx_pred = np.linspace(abs(np.min(x)), abs(np.max(x)), 30)  # range of price values
-            yy_pred = np.linspace(abs(np.min(y)), abs(np.max(y)), 30)  # range of advertising values
+            def estimate_coef(x, y):
+                # number of observations/points
+                n = np.size(x)
+
+                # mean of x and y vector
+                m_x = np.mean(x)
+                m_y = np.mean(y)
+
+                # calculating cross-deviation and deviation about x
+                SS_xy = np.sum(y * x) - n * m_y * m_x
+                SS_xx = np.sum(x * x) - n * m_x * m_x
+
+                # calculating regression coefficients
+                b_1 = SS_xy / SS_xx
+                b_0 = m_y - b_1 * m_x
+
+                return (b_0, b_1)
+
+            xx_pred = np.linspace(np.min(x), np.max(x), 30)
+            yy_pred = np.linspace(np.min(y), np.max(y), 30)
             xx_pred, yy_pred = np.meshgrid(xx_pred, yy_pred)
 
             model_viz = np.array([xx_pred.flatten(), yy_pred.flatten()]).T
@@ -378,18 +405,20 @@ while True:
             ax.set_zlabel('Z', fontsize=12)
             ax.locator_params(nbins=4, axis='x')
             ax.locator_params(nbins=5, axis='x')
-            fig.suptitle('Regression model  ($R^2 = %.2f$)' % r2, fontsize=15, color='k')
+            fig.suptitle(
+                f'R = {r2:.2f}\ny = {ols.intercept_:.3f} + {ols.coef_[0]:.3f}x + {ols.coef_[1]:.3f}x1',
+                fontsize=15, color='k')
 
             fig.tight_layout()
             plt.show()
         except:
-            sg.popup('Something went wrong', title='Oops', icon='math.ico')
+            sg.popup('Only for multi-dim', title='Oops', icon='math.ico')
             pass
 
     if event == 'Corr.Matr':
         try:
             corr = df.corr()
-            sg.Print(f'{corr}', size=(65, 10), font='Courier 12', no_titlebar=True, resizable=True, grab_anywhere=True)
+            sg.Print(f'{corr}', size=(65, 10), font='Courier 12', resizable=True, grab_anywhere=True)
 
             # making mask
             mask = np.zeros_like(corr, dtype=bool)
@@ -409,21 +438,72 @@ while True:
             sg.popup('Something went wrong', title='Oops', icon='math.ico')
             pass
 
-    if event == 'Parallel Coords':
+    if event == 'Partial Corr.':
         try:
-            # Копія через функцію, щоб не були пов'язані, бо ресетаємо індекси, не треба нам такого в ориг. датафреймі
-            df1 = df.copy()
-            df1.reset_index(inplace=True)
-            pd.plotting.parallel_coordinates(df1, 'index')
-            plt.gca().legend_.remove()
-            plt.show()
+            save = ''
+            if dimension > 2:
+                X, Y = ''.join(sg.popup_get_text('X,Y?', title='X,Y', icon='math.ico').split())
+                Z = ''.join(sg.popup_get_text('Z?', title='Z', icon='math.ico').split())
+            import pingouin as pg
+
+            p_corr = pg.partial_corr(data=df, x=int(X), y=int(Y), covar=int(Z)).round(3)
+            save += 'Corr: ' + str(p_corr.to_numpy()[0][1]) + '\n'
+            signif = p_corr.to_numpy()[0][3]
+
+            if signif > 0.05:
+                save += 'Не Значущий'
+            else:
+                save += 'Значущий'
+
+            sg.popup(save, title='Answer', icon='math.ico')
         except:
-            sg.popup('Something went wrong', icon='math.ico')
+            sg.popup('Something went wrong', title='Oops', icon='math.ico')
             pass
+
+    if event == 'Multiple Corr.':
+        try:
+            if dimension > 2:
+                delete_n = int(''.join(sg.popup_get_text('Choose:', title='Which array to delete?', icon='math.ico').split()))
+            corr = df.corr()
+            det0 = np.linalg.det(corr)
+            corr = corr.drop(corr.index[delete_n])
+            del corr[delete_n]
+            det1 = np.linalg.det(corr)
+            f = ((len(df) - df.shape[1] - 1) / df.shape[1]) * (det0 / (1 - det0))
+            if f > 0.05:
+                sg.popup_ok(f'Multiple.Correlation: {(1 - (det0 / det1)) ** 1 / 2:.3f}\nЗначущий', title='Corr', icon='math.ico')
+            else:
+                sg.popup_ok(f'Multiple.Correlation: {(1 - (det0 / det1)) ** 1 / 2:.3f}\nНе значущий', title='Corr', icon='math.ico')
+        except:
+            sg.popup('Something went wrong', title='Oops', icon='math.ico')
+            pass
+
+    if event == 'Parallel Coords':
+        if dimension > 2:
+            try:
+                """
+                Копія через функцію, щоб не були пов'язані, бо ресетаємо індекси, не треба нам такого в ориг. датафреймі
+                
+                """
+                # df1 = df.copy()
+                # df1.reset_index(inplace=True)
+                # pd.plotting.parallel_coordinates(df1, 'index')
+                # plt.gca().legend_.remove()
+                # plt.show()
+                fig = px.parallel_coordinates(df, color=0)
+                fig.write_image("yourfile.png")
+                img = cv2.imread('yourfile.png')
+                plt.imshow(img)
+                plt.show()
+            except:
+                pass
+        else:
+            sg.popup('Only for multi-dim', icon='math.ico')
 
     if event == 'Diagnostic diagram':
         try:
-            col = ''.join(sg.popup_get_text('Which columns do yo want?').split())
+            if dimension > 2:
+                col = ''.join(sg.popup_get_text('Which columns do yo want?').split())
             fig = plt.figure(figsize=(8, 8))
             ax = fig.add_subplot(111)
             ax.scatter(df[int(col[0])], df[int(col[1])], marker='x', c='r')
@@ -444,11 +524,14 @@ while True:
 
     if event == 'Bubble plot':
         try:
-            # Х,Y,Z ввод. користувачем, після чого Z перетвор. у матрицю цілих чисел
-            # Робимо новий датафрейм з X,Y,Z користувача, колір рандом, розмір бульбашок - Z
+            """
+            Х,Y,Z ввод. користувачем, після чого Z перетвор. у матрицю цілих чисел
+            Робимо новий датафрейм з X,Y,Z користувача, колір рандом, розмір бульбашок - Z
+            """
 
-            X,Y = ''.join(sg.popup_get_text('Arguments(X,Y)?').split())
-            col = ''.join(sg.popup_get_text('Bubble Size(Z)').split())
+            if dimension > 2:
+                X, Y = ''.join(sg.popup_get_text('Arguments(X,Y)?').split())
+                col = ''.join(sg.popup_get_text('Bubble Size(Z)').split())
             colors = np.random.rand(len(df[0]))
             col = np.array(df[int(col[0])])
             col = col.astype(int)
@@ -472,7 +555,7 @@ while True:
             if dimension > 2:
                 sg.popup('You have multi-dimensional array', title='Oops', icon='math.ico')
             elif dimension == 2:
-                two_dimens_graph(arr, arr1)
+                two_dimens_graph(df)
             elif dimension == 1:
                 one_dimens_graph(arr)
             else:
