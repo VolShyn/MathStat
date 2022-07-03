@@ -12,206 +12,277 @@ from sklearn.metrics import mean_squared_error
 import math
 
 '''
-Below is some functions to calculate one dimension
+Below is some functions to calculate 1 dimension
 '''
 
 
-def one_dim_analysis(data, text=''):
-    text += 'Length: ' + f'{len(data)}' + '\nSumm: ' + f'{abs(sum(data)):.2f}' + '\nMax: ' + f'{max(data):.4f}' + '\nMin: ' + f'{min(data):.4f}' + '\nScale: ' + f'{max(data) - min(data):.4f}' + '\nMean: ' + f'{abs(statistics.mean(data)):.4f}' + '\nMed: ' + f'{statistics.median(data):.4f}' + '\nVar: ' + f'{statistics.variance(data):.4f}' + '\nStDev: ' + f'{statistics.stdev(data):.4f}' + '\nAsym: '
-    return text + asymmetry(data) + '\nEcs: ' + f'{kurtosis(data):.4f}' + '\nCEcs: ' + c_kurtosis(
-        data) + '\nVariation: ' + pearson(data) + '\nMedU: ' + f'{med_oul(data):.4f}' + '\nQuantiles: ' + quant(data)
+def one_dim_analysis(df):
+    """
+    Func to fill statistical analysis multiline for 1 dimensional set
+    :param df:
+    :return string:
+    """
+    return 'N: ' + f'{len(df)}' + '\nМакс: ' + f'{df.max()[0]:.4f}' + '\nМін: ' + f'{df.min()[0]:.4f}' + '\nРозмах: ' + f'{df.max()[0] - df.min()[0]:.4f}' + '\nСереднє: ' + f'{df.mean()[0]:.4f}' + '\nМедіана: ' + f'{df.median()[0]:.4f}' + '\nДисперсія: ' + f'{df.var()[0]:.4f}' + '\nСер.кв.в: ' + f'{df.std()[0]:.4f}' + '\nАсиметрія: ' + asymmetry(
+        df) + '\nЕксц: ' + kurtosis(df) + '\nКонтр-ексц: ' + c_kurtosis(df) + '\nПірсон.В: ' + pearson(
+        df) + '\nMED Уолша: ' + walsh_med(df)
 
 
-def asymmetry(data):
+def asymmetry(df):
+    """
+    Describes assymetry of Cumulative distribution function (CDF) - функції щільності розподілу,
+    If result > 0 we can say that our CDF have assymetry to the left,
+    res < 0 - to the right
+    :param df:
+    :return string, with assymetry value .4f:
+    """
     buf = 0
-    k = 0
-    s = statistics.stdev(data)
-    m = statistics.mean(data)
-    while (k < len(data)):
-        buf += (data[k] - m) ** 3
-        k += 1
-    asymmetry = (buf / len(data)) / s ** 3
+    s = df.std()[0]  # s = standart deviation of dataframe
+    m = df.mean()[0]  # m = mean of dataframe
+    for i in range(len(df)):
+        buf += (df[0][i] - m) ** 3  # buf is SUM of ((value in dataframe - mean) in pow 3)
+    asymmetry = (buf / len(df)) / s ** 3
     return f'{asymmetry:.4f}'
 
 
-def kurtosis(data):
+def kurtosis(df):
+    """
+    Function to find coef. of kurtosis (ексцес).
+    Value describes how 'sharp' is our CDF in comparision with normal distribution,
+    :param df:
+    :return string, with value of kurtosis :.4f:
+    """
     buf = 0
-    k = 0
-    m = statistics.mean(data)
-    s = statistics.stdev(data)
-    while (k < len(data)):
-        buf += (data[k] - m) ** 4
-        k += 1
-    kurtosis = (buf / len(data)) / s ** 4
-    return round(kurtosis, 4)
+    s = df.std()[0]  # s = standart deviation of dataframe
+    m = df.mean()[0]  # m = mean of dataframe
+    for i in range(len(df)):
+        buf = (df[0][i] - m) ** 4
+    kurt = (buf / len(df)) / s ** 4
+    return f'{kurt:.4f}'
 
 
-def c_kurtosis(data):
-    return f'{1 / abs(kurtosis(data)) ** 0.5:.4f}'
+def c_kurtosis(df):
+    """
+    Контр-ексцес.
+    Describes form of our distribution in comparision with Normal Distribution,
+    where coef. < 0.515 - sharp form; coef. > 0.63 - 'chapiteau' form
+    :param df:
+    :return string, with c_kurt coef.:.4f:
+    """
+
+    # we need absolute value, use abs.
+    return f'{1 / abs(float(kurtosis(df))) ** 0.5:.4f}'
 
 
-def pearson(data):
-    if np.mean(data) != 0:
-        res = np.std(data) / np.mean(data)
-        if 0 <= res <= 1:
-            return f'{res:.4f}'
+def pearson(df):
+    """
+    Pearson's variation coefficient, W  = std/mean, mean != 0
+    If < 1 we can say that our set is appropriate
+    Don't apply it when mean is around zero
+    :param df:
+    :return string with pearson coef, or 'None', or Mean = 0:
+    """
+    if df.mean()[0] != 0:  # we can't divide by zero
+        pearson_var = df.std()[0] / df.mean()[0]
+        if 0 <= pearson_var <= 1:
+            return f'{pearson_var:.4f}'
         return 'None'
     else:
         return 'Mean=0'
 
 
-def med_oul(data):
-    return round(data[round(len(data) / 2)], 4)
+def walsh_med(df):
+    """
+    Uolsch Median. Just median that is more sustainable to anomalies.
+    MED_uo = 1/2(Xi + Xj), 1<=i<=j<=N, N - length of set
+    :param df:
+    :return string, with walsh_med value:.4f:
+    """
+    N = len(df)
+    return f'{(N / (N - 1) / 2) * 1 / 2:.4f}'
 
 
-def quant(data):
-    try:
-        # temp = [round(x, 2) for x in statistics.quantiles(data)]
-        return str(list(map(lambda x: f'{x:.2f}', statistics.quantiles(data))))
-    except:
-        pass
-
-
-def find_anomalies(data):
+def find_anomalies(df):
+    """
+    Function to find anomalies (outliers)
+    using 3 std rule
+    :param df:
+    :return LIST of anomalies:
+    """
     anomalies = []
-    s = statistics.stdev(data)
-    m = statistics.mean(data)
-    if len(data) <= 100:
+    s = df.std()[0]  # s = standart deviation of dataframe
+    m = df.mean()[0]  # m = mean of dataframe
+    if len(df) <= 100:  # if set length is less than 100 we can use 3 std
         anomaly_cut_off = s * 3
-    else:
+    else:  # else only 2, in order to save information
         anomaly_cut_off = s * 2
-    lower_limit = m - anomaly_cut_off
-    upper_limit = m + anomaly_cut_off
-    for outlier in data:
-        if outlier > upper_limit or outlier < lower_limit:
-            anomalies.append(outlier)
+    l_lim = m - anomaly_cut_off  # lower limit
+    up_lim = m + anomaly_cut_off  # upper limit
+    for i in range(len(df)):
+        if df[0][i] > up_lim or df[0][i] < l_lim:
+            anomalies.append(df[0][i])
 
     return anomalies
 
 
-def normpdf(x, mean, sd):
-    var = float(sd) ** 2
-    denom = (2 * math.pi * var) ** .5
-    num = math.exp(-(float(x) - float(mean)) ** 2 / (2 * var))
-    return num / denom
+def one_dimens_graph(df):
+    """
+    Function to make and show plots for 1 dimensional sets,
+    KDE plot and histogram
+    ecdf plot and confidence intervals
 
-
-def exponential_inverse_trans(data_size, mean=1):
-    U = uniform.rvs(size=data_size)
-    actual = expon.rvs(size=data_size, scale=mean)
-    return actual
-
-
-def one_dimens_graph(arr):
+    :param df:
+    :return nothing:
+    """
     plt.style.context('seaborn')
-    f = plt.figure(tight_layout=True)
+    f = plt.figure(tight_layout=True)  # make figure
+    plt.xlim([df.min()[0] - (df.min()[0] * 0.1), df.max()[0] + (df.min()[0] * 0.1)])  # make normal x limit
+    # Below is some figure setting that we can live without
     f.set_figwidth(8)
     f.set_figheight(8)
-    sns.set_theme(style="whitegrid")
     plt.subplot(2, 1, 1)
-    plt.grid(b=True, color='grey',
-             linestyle='-.', linewidth=0.5,
-             alpha=0.6)
-    plt.xlim([min(arr) - (min(arr) * 0.1), max(arr) + (min(arr) * 0.1)])
+    plt.grid(b=True, color='grey', linewidth=1,
+             alpha=0.8)
     plt.xlabel('Value', fontsize=12)
     plt.ylabel('Frequency', fontsize=12)
-    plt.tick_params(axis='both', which='major', labelsize=14)
-
-    x = np.linspace(min(arr), max(arr), len(arr))  # linspace(0,1,5) == array(0,0.25,0.5,0.75,1)
-
-    if len(arr) <= 100:
-        sns.distplot(arr, bins=(int(len(arr) ** (1 / 2))), kde=True,
-                     hist_kws={'alpha': 0.6, 'color': 'pink'},
-                     kde_kws={'alpha': 0.8, 'color': 'black'})
-        x = np.linspace(min(arr), max(arr), int(len(arr) ** (1 / 2)))
+    # Figure setting is done, now creating histogram with kde,
+    # The formula for N<100 and N>100 is
+    if len(df) <= 100:
+        x = np.linspace(df.min()[0], df.max()[0], int(len(df) ** (1 / 2)))
+        bins = int(len(df) ** (1 / 2))
     else:
-        sns.distplot(arr, bins=(int(len(arr) ** (1 / 3)) - 1), kde=True,
-                     hist_kws={'alpha': 0.6, 'color': 'pink'},
-                     kde_kws={'alpha': 0.8, 'color': 'black'})
-        x = np.linspace(min(arr), max(arr), int(len(arr) ** (1 / 3)))
-
-    # making emperical graph
+        x = np.linspace(df.min()[0], df.max()[0], int(len(df) ** (1 / 3)))
+        bins = int(len(df) ** (1 / 3) - 1)
+    sns.distplot(df, bins=bins, kde=True,
+                 kde_kws={'alpha': 0.85, 'color': 'black'})
 
     plt.subplot(2, 1, 2)
-    ci1 = [x * 0.95 for x in arr]  # confidence interval 0.95 from down
-    ci2 = [x * 1.05 for x in arr]  # confidence interval from up
+
+    ci1 = x * 0.85  # confidence interval from below
+    ci2 = x * 1.15  # confidence interval from up
     sns.ecdfplot(x)
     sns.kdeplot(ci1, cumulative=True)
-    sns.kdeplot(arr, cumulative=True)
-    sns.kdeplot(ci2, cumulative=True)
+    sns.kdeplot(x, x=0, cumulative=True)
+    sns.kdeplot(ci2, x=0, cumulative=True)
     plt.xlabel('Value', fontsize=12)
     plt.ylabel('Frequency', fontsize=12)
-    plt.tick_params(axis='both', which='major', labelsize=14)
+    plt.grid(b=True, color='grey', linewidth=1,
+             alpha=0.8)
     plt.show()
 
 
 '''
-Below is functions to calculate 2D
+Below is functions to calculate 2 dimensions
 '''
 
 
-def two_dim_analysis(X, Y):
-    # cov(X, Y) = (sum (x - mean(X)) * (y - mean(Y)) ) * 1/(n-1)
-    return 'Length: ' + f'{len(X)}' + '\nMean(X): ' + f'{np.mean(X):.4f}' + '\nMean(Y): ' + f'{np.mean(Y):.4f}' + '\nSt.Dev(X): ' + f'{np.std(X):.4f}' + '\nSt.Dev(Y): ' + f'{np.std(Y):.4f}' + '\nCorr: ' + pearson_corr(
-        X, Y) + '\nSpearman: ' + spearman_correlation(X, Y) + '\nKendall: ' + kendall_correlation(X,
-                                                                                                  Y) + '\nQ: ' + f'{q(X, Y):.4f}' + '\nY: ' + f'{y(X, Y):.4f}' + '\n(I)Fehn: ' + f'{i(X, Y):.4f}'
+def two_dim_analysis(df):
+    """
+    Function to fill statistical analysis multiline for 2 dimensional set
+
+    :param df:
+    :return string:
+    """
+    return 'N: ' + f'{len(df)}' + '\nСер(0): ' + f'{df.mean()[0]:.4f}' + '\nСер(1): ' + f'{df.mean()[1]:.4f}' + '\nСер.кв.в(0): ' + f'{df.std()[0]:.4f}' + '\nСер.кв.в(1): ' + f'{df.std()[1]:.4f}' + '\nКор.Пірс: ' + pearson_corr(
+        df) + '\nКор.Спірм: ' + f'{df.corr("spearman")[0][1]:.4f}' + '\nКор.Кендал: ' + f'{df.corr("kendall")[0][1]:.4f}' + '\nQ: ' + q(
+        df) + '\nY: ' + y(df) + '\nI: ' + i(df)
 
 
-def covariation(X, Y):
-    # cov = (sum(x - statistics.mean(X)) * (y - statistics.mean(Y))) * 1 / (n - 1)
-    cov1, cov2 = np.cov(X, Y)
-    return f'{cov1[1]}'
+def pearson_corr(df):
+    """
+    Function to estimate pearson correlation coef. through covariance
+    CovXY / (stdX * stdY)
+    С = 0 sets are independent, C = 1 - functional dependence
+    :param df:
+    :return string with corr coef:.4f :
+    """
+    corr = (df.cov()[0][1]) / (df[0].std() * df[1].std())
+    return f'{corr:.4f}'
 
 
-def pearson_corr(X, Y):
-    corr1 = np.corrcoef(X, Y)
-    return f'{corr1[0][1]:.4f}'
-
-
-def spearman_correlation(X, Y):
-    # return f'{np.cov(np.rank(X), np.rank(Y)) / (np.std(np.rank(X)) * np.std(np.rank(Y)))}:.4f'
-    coeff, p = scipy.stats.spearmanr(X, Y)
-    return f'{coeff:.4f}'
-
-
-def kendall_correlation(X, Y):
-    coeff, p = scipy.stats.kendalltau(X, Y)
-    return f'{coeff:.4f}'
-
-
-def table_create(X, Y):
+def table_create(df):
+    """
+    Function to create table for the future estimations (Q,I,Y)
+    :param df:
+    :return np.array (table):
+    """
     table = np.empty((2, 2))
-    for i in range(len(X)):
-        if X[i] <= np.mean(X) and Y[i] <= np.mean(Y): table[0][0] += 1
-        if X[i] > np.mean(X) and Y[i] <= np.mean(Y): table[0][1] += 1
-        if X[i] <= np.mean(X) and Y[i] > np.mean(Y): table[1][0] += 1
-        if X[i] > np.mean(X) and Y[i] > np.mean(Y): table[1][1] += 1
+    m0 = df.mean()[0]  # mean for 0 column
+    m1 = df.mean()[1]  # mean for 1 column
+    for i in range(len(df)):
+        if df[0][i] <= m0 and df[1][i] <= m1: table[0][0] += 1
+        if df[0][i] > m0 and df[1][i] <= m1: table[0][1] += 1
+        if df[0][i] <= m0 and df[1][i] > m1: table[1][0] += 1
+        if df[0][i] > m0 and df[1][i] > m1: table[1][1] += 1
     return table
 
 
-def q(X, Y):
-    table = table_create(X, Y)
+def q(df):
+    """
+    Коефіцієнт Q зв’язку Юла
+    varies from −1 to +1.
+    Yule's Q, related to Y as: Q = (2Y) / (1+Y)^2
+    :param df:
+    :return string with value of Q:
+    """
+    table = table_create(df)
     q = (table[0, 0] * table[1, 1] - table[0, 1] * table[1, 0]) / (
             table[0, 0] * table[1, 1] + table[0, 1] * table[1, 0])
-    return q
+    return f'{q:.4f}'
 
 
-def y(X, Y):
-    table = table_create(X, Y)
-    y = (math.sqrt(table[0, 0] * table[1, 1]) - math.sqrt(table[0, 1] * table[1, 0])) / (
-            math.sqrt(table[0, 0] * table[1, 1]) + math.sqrt(table[0, 1] * table[1, 0]))
-    return y
+def y(df):
+    """
+    Коефіцієнт Y зв’язку Юла
+    Yule's Y, coefficient of colligation, is a measure of association between two binary variables.
+    varies from −1 to +1. −1 reflects total negative correlation, +1 reflects perfect positive association
+    0 - no association
+    related to Q as: Y = (1-sqrt(1-Q^2))/ Q
+    :param df:
+    :return string with value of Y:
+    """
+    table = table_create(df)
+    y = ((table[0, 0] * table[1, 1]) ** 1 / 2 - (table[0, 1] * table[1, 0]) ** 1 / 2) / (
+            (table[0, 0] * table[1, 1]) ** 1 / 2 + (table[0, 1] * table[1, 0]) ** 1 / 2)
+    return f'{y:.4f}'
 
 
-def i(X, Y):
-    table = table_create(X, Y)
+def i(df):
+    """
+    Індекс Фехнера
+    Fehner index
+    |I| <= 1. I > 0 - positive corr, I < 0 - negative. I ~= 0 - no corr, so
+    sets is independent.
+    Works not only on binary data, but on discrete data too
+    :param df:
+    :return string with index:
+    """
+    table = table_create(df)
     i = (table[0, 0] + table[1, 1] - table[1, 0] - table[0, 1]) / (
             table[0, 0] + table[1, 1] + table[1, 0] + table[0, 1])
-    return i
+    return f'{i:.4f}'
 
 
-def phi_coef(X, Y):
-    pass
+def two_dimens_graph(df):
+    """
+    Function to plot scatter plot with linear_reg,
+    and kde plot
+    :param df:
+    :return nothing:
+    """
+    f = plt.figure(tight_layout=True)
+    f.set_figwidth(10)
+    f.set_figheight(10)
+    plt.subplot(2, 1, 1)
+    sns.regplot(x=df[0], y=df[1], marker='+', ci=70)
+    plt.subplot(2, 1, 2)
+    sns.histplot(x=df[0], y=df[1])
+    sns.kdeplot(x=df[0], y=df[1], color='black', linewidths=2)
+    plt.show()
+
+
+"""
+Hypothesis testing functions
+"""
 
 
 def kolmogorov_1dim(X):
@@ -252,16 +323,29 @@ def chi_squared(X):
     return f'{statistic:.6f}\npvalue: {pvalue:.6f}'
 
 
-def two_dimens_graph(dataframe):
-    f = plt.figure(tight_layout=True)
-    f.set_figwidth(10)
-    f.set_figheight(10)
-    plt.subplot(2, 1, 1)
-    sns.regplot(x=dataframe['X'], y=dataframe['Y'], marker='+', ci=70)
-    plt.subplot(2, 1, 2)
-    sns.histplot(x=dataframe['X'], y=dataframe['Y'])
-    sns.kdeplot(x=dataframe['X'], y=dataframe['Y'], color='black', linewidths=2)
-    plt.show()
+"""
+Multidimensional funcs
+"""
+
+
+def describing(df, desc=''):
+    colN = int(df.shape[1])
+    for i in range(colN):
+        desc += f'max {str(df.describe()[i][7])}' + '\n' + str(df.describe()[i][1:4])
+        desc += '\n'
+    words = desc.split()
+    for i in range(colN):
+        words.remove('dtype:')
+        words.remove('float64')
+    desc = ''
+    for i in range(0, len(words), 2):
+        desc += str(words[i]) + ' ' + str(words[i + 1] + '\n')
+    return desc
+
+
+"""
+HELP_INFO
+"""
 
 
 def help_info(event):
@@ -327,33 +411,3 @@ def help_info(event):
             'Is a basic method for pseudo-random number sampling, i.e., for generating sample numbers at random from any probability distribution given its cumulative distribution function.\n'
             '*In programm only normal and exponential variants are available',
             title='Inversion sampling', icon='math.ico', image='')
-
-
-def check_for_columns(txt):
-    try:
-        checkcol = pd.read_fwf(txt)
-        count_col = checkcol.shape[1]  # Gives number of columns
-        if count_col >= 3:
-            return count_col
-        elif count_col == 2:
-            return 2
-        else:
-            return 1
-    except:
-        return 0
-
-
-def describing(df, desc=''):
-    colN = int(df.shape[1])
-    for i in range(colN):
-        desc += f'max {str(df.describe()[i][7])}' + '\n' + str(df.describe()[i][1:4])
-        desc += '\n'
-    words = desc.split()
-    for i in range(colN):
-        words.remove('dtype:')
-        words.remove('float64')
-    desc=''
-    for i in range(0, len(words), 2):
-        desc += str(words[i]) + ' ' + str(words[i + 1] + '\n')
-    return desc
-
