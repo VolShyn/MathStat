@@ -1,13 +1,14 @@
-import random
-import statistics
-
+from help_info import help_info
+from one_dim import one_dim_analysis, one_dimens_graph
+from two_dim import two_dim_analysis, two_dimens_graph
+from stats import describing, find_anomalies, cov_mat, cumulative_coef
 import matplotlib.pyplot as plt
+from mpl_toolkits import mplot3d
 import numpy as np
 import seaborn as sns
-from scipy import stats
 from sklearn import linear_model
 import PySimpleGUI as sg
-from stats import *
+import pandas as pd
 
 # seaborn gives 'FutureWarning', importing warnings to get rid of it
 import warnings
@@ -18,7 +19,7 @@ sg.theme("Default1")
 sg.SetOptions(element_padding=(3, 3))
 
 menu_def = [['Файл', ['Відкрити', 'Зберегти', 'Вихід']],
-            ['Показати', ['Графік', '---', 'Багатовимірні',
+            ['Показати', ['Графік', '---', 'МГК', '---', 'Багатовимірні',
                           ['Діагн.діаграма розкиду', 'Лінійна регресія', 'Паралельні кординати', 'Теплова карта',
                            'Діагностична діаграма', 'Бульбашковий']]],
             ['Змінити', ['Стандартизація', 'Зсув', 'Повернути', 'Аномалії', 'Очистити'], ],
@@ -28,8 +29,7 @@ menu_def = [['Файл', ['Відкрити', 'Зберегти', 'Вихід']]
               'Однофакторний дисперсійний аналіз(ANOVA)',
               'Бартлетта', 'Крит. узгодженості Колмогорова',
               'Критерій Уілкоксона', '---', 'Критерій знаків', 'Критерій узгодженості Пірсона',
-              'T-тест', ['1-ознака', '2-ознаки',
-                         ['2-виміри']]]],
+              'T-тест', ['1-ознака', '2-ознаки']]],
             ['Інфо', ['Log()', 'Tests',
                       ['General average', 'Pearson', 'Kolmogorov', 'F-test', 'Bartletts test', 'Wilcoxon', 'Sign test',
                        'Single factor',
@@ -44,7 +44,7 @@ layout = [
 ]
 
 window = sg.Window('Математична статистика', layout, resizable=True, finalize=True, font="Courier 12",
-                   icon='math.ico',
+                   icon='icon/math.ico',
                    default_element_size=(6, 1),
                    default_button_element_size=(10, 1), size=(800, 450))
 
@@ -57,45 +57,48 @@ while True:
     """
 
     if event == 'Відкрити':
-        path = sg.popup_get_file('Відкрити...', icon='math.ico')
-        df = pd.read_fwf(path, header=None)
-        if df.shape[1] > 2:
-            sg.popup_no_buttons('⠀⠀⠀⠀⠀Багатовимірний⠀⠀⠀⠀⠀⠀', title='Успіх', icon='math.ico', auto_close=True,
-                                auto_close_duration=2)
-            window['-FILE-'].update(df.head(len(df)))
-            window['-out-'].update(describing(df))
+        try:
+            path = sg.popup_get_file('Відкрити...', icon='icon/math.ico')
+            df = pd.read_fwf(path, header=None)
+            if df.shape[1] > 2:
+                sg.popup_no_buttons('⠀⠀⠀⠀⠀Багатовимірний⠀⠀⠀⠀⠀⠀', title='Успіх', icon='icon/math.ico', auto_close=True,
+                                    auto_close_duration=2)
+                window['-FILE-'].update(df.head(len(df)))
+                window['-out-'].update(describing(df))
 
-        elif df.shape[1] == 2:
-            sg.popup_no_buttons('⠀⠀⠀⠀⠀⠀⠀Двовимірний⠀⠀⠀⠀⠀⠀⠀', title='Успіх', icon='math.ico', auto_close=True,
-                                auto_close_duration=2)
-            window['-out-'].update(two_dim_analysis(df))
-            window['-FILE-'].update(df.head(len(df)))
-        else:
-            sg.popup_no_buttons('⠀⠀⠀⠀⠀⠀⠀Одновимірний⠀⠀⠀⠀⠀⠀⠀', title='Успіх', icon='math.ico', auto_close=True,
-                                auto_close_duration=2)
-            window['-out-'].update(one_dim_analysis(df))
-            window['-FILE-'].update(df.head(len(df)))
-        window['-FILE-'].update(visible=True)
+            elif df.shape[1] == 2:
+                sg.popup_no_buttons('⠀⠀⠀⠀⠀⠀⠀Двовимірний⠀⠀⠀⠀⠀⠀⠀', title='Успіх', icon='icon/math.ico', auto_close=True,
+                                    auto_close_duration=2)
+                window['-out-'].update(two_dim_analysis(df))
+                window['-FILE-'].update(df.head(len(df)))
+            else:
+                sg.popup_no_buttons('⠀⠀⠀⠀⠀⠀⠀Одновимірний⠀⠀⠀⠀⠀⠀⠀', title='Успіх', icon='icon/math.ico', auto_close=True,
+                                    auto_close_duration=2)
+                window['-out-'].update(one_dim_analysis(df))
+                window['-FILE-'].update(df.head(len(df)))
+            window['-FILE-'].update(visible=True)
+        except:
+            pass
 
     if event == 'Зберегти':
         try:
             if df.shape[1] > 2:
                 np.savetxt('saveMn.txt', df.values, fmt='%4f')
                 sg.popup_no_buttons('⠀⠀Збережено як:\n⠀⠀'
-                                    'saveMn.txt', icon='math.ico', auto_close=True,
+                                    'saveMn.txt', icon='icon/math.ico', auto_close=True,
                                     auto_close_duration=3)
             elif df.shape[1] == 2:
                 np.savetxt('save2n.txt', df.values, fmt='%4f')
                 sg.popup_no_buttons('⠀⠀Збережено як:\n⠀⠀'
-                                    'save2n.txt', icon='math.ico', auto_close=True,
+                                    'save2n.txt', icon='icon/math.ico', auto_close=True,
                                     auto_close_duration=3)
             else:
                 np.savetxt('save1n.txt', df.values, fmt='%4f')
                 sg.popup_no_buttons('⠀⠀Збережено як:\n⠀⠀'
-                                    'save1n.txt', icon='math.ico', auto_close=True,
+                                    'save1n.txt', icon='icon/math.ico', auto_close=True,
                                     auto_close_duration=3)
         except:
-            sg.popup_quick('⠀⠀⠀⠀⠀Нічого зберігати!⠀⠀⠀⠀⠀', title='???', icon='math.ico', button_type=5,
+            sg.popup_quick('⠀⠀⠀⠀⠀Нічого зберігати!⠀⠀⠀⠀⠀', title='???', icon='icon/math.ico', button_type=5,
                            auto_close=True, auto_close_duration=3)
 
     if event == 'Повернути':
@@ -105,26 +108,26 @@ while True:
             last_event = event
             del dfcop
         except:
-            sg.popup_quick('⠀⠀⠀⠀⠀⠀Нічого повертати!⠀⠀⠀⠀⠀⠀', title='???', icon='math.ico', button_type=5,
+            sg.popup_quick('⠀⠀⠀⠀⠀⠀Нічого повертати!⠀⠀⠀⠀⠀⠀', title='???', icon='icon/math.ico', button_type=5,
                            auto_close=True, auto_close_duration=3)
 
     if event == 'Зсув':
         try:
             dfcop = df.copy()
-            step = sg.PopupGetText('Shift step:', title='Shift', icon='math.ico')
+            step = sg.PopupGetText('Крок: ', title='Крок', icon='icon/math.ico')
             df = df + int(step)
             window['-FILE-'].update(df.head(len(df[0])))
         except:
-            sg.popup_quick('⠀⠀⠀⠀⠀⠀⠀Сталася помилка!⠀⠀⠀⠀⠀⠀⠀', title='Помилка!', icon='math.ico', button_type=5,
+            sg.popup_quick('⠀⠀⠀⠀⠀⠀⠀Сталася помилка!⠀⠀⠀⠀⠀⠀⠀', title='Помилка!', icon='icon/math.ico', button_type=5,
                            auto_close=True, auto_close_duration=3)
 
     if event == 'Стандартизація':
         try:
             dfcop = df.copy()
-            df = (df - df.mean()) / df.std()  # standartization Z-score
+            df = (df - df.mean()) / df.std()  # Z-score
             window['-FILE-'].update(df)
         except:
-            sg.popup_quick('⠀⠀⠀⠀⠀⠀⠀Сталася помилка!⠀⠀⠀⠀⠀⠀⠀', title='Помилка!', icon='math.ico', button_type=5,
+            sg.popup_quick('⠀⠀⠀⠀⠀⠀⠀Сталася помилка!⠀⠀⠀⠀⠀⠀⠀', title='Помилка!', icon='icon/math.ico', button_type=5,
                            auto_close=True, auto_close_duration=3)
 
     if event == 'Очистити':
@@ -133,20 +136,20 @@ while True:
             window['-FILE-'].update(visible=False)
             del df
         except:
-            sg.popup_quick('⠀⠀⠀⠀⠀⠀⠀Сталася помилка!⠀⠀⠀⠀⠀⠀⠀', title='Помилка!', icon='math.ico', button_type=5,
+            sg.popup_quick('⠀⠀⠀⠀⠀⠀⠀Сталася помилка!⠀⠀⠀⠀⠀⠀⠀', title='Помилка!', icon='icon/math.ico', button_type=5,
                            auto_close=True, auto_close_duration=3)
 
     if event == 'Аномалії':
         try:
             anom = find_anomalies(df)  # 3 sigma rule to find anomalies
             if anom:  # Check if our list is empty or not
-                sg.popup('УВАГА! Знайдено аномалії!\n'
-                         f'{anom}', icon='math.ico', title='УВАГА!')
+                sg.popup('Знайдено аномалії: \n'
+                         f'{anom}', icon='icon/math.ico', title='Ахтунг!')
             else:
-                sg.popup('Аномалій не знайдено!\n', icon='math.ico', title='Ок', button_type=5, auto_close=True,
+                sg.popup('Аномалій не знайдено \n', icon='icon/math.ico', title='Ок', button_type=5, auto_close=True,
                          auto_close_duration=3)
         except:
-            sg.popup_quick('⠀⠀⠀⠀⠀⠀⠀Сталася помилка!⠀⠀⠀⠀⠀⠀⠀', title='Вупс...', icon='math.ico', button_type=5,
+            sg.popup_quick('⠀⠀⠀⠀⠀⠀⠀Сталася помилка!⠀⠀⠀⠀⠀⠀⠀', title='Вупс...', icon='icon/math.ico', button_type=5,
                            auto_close=True, auto_close_duration=3)
 
     """
@@ -157,13 +160,13 @@ while True:
     if event == 'Графік':
         try:
             if df.shape[1] > 2:
-                sg.popup('Багатовимірна сукупність!', title='Упс..', icon='math.ico')
+                sg.popup('Багатовимірна вибірка!', title='Упс..', icon='icon/math.ico')
             elif df.shape[1] == 2:
                 two_dimens_graph(df)
             else:
                 one_dimens_graph(df)
         except:
-            sg.popup_quick('⠀⠀⠀⠀⠀⠀⠀Сталася помилка!⠀⠀⠀⠀⠀⠀⠀', title='Вупс...', icon='math.ico', button_type=5,
+            sg.popup_quick('⠀⠀⠀⠀⠀⠀⠀Сталася помилка!⠀⠀⠀⠀⠀⠀⠀', title='Вупс...', icon='icon/math.ico', button_type=5,
                            auto_close=True, auto_close_duration=3)
 
     if event == 'Генеральне середнє':
@@ -171,34 +174,34 @@ while True:
             if dimension == 2:
                 Z_t, pvalue = stats.ttest_ind(df[0], df[1])
                 alpha = sg.popup_get_text('Статистична значущість(alpha): ', title='Стат.знач.',
-                                          icon='math.ico')
+                                          icon='icon/math.ico')
                 Z_phi = (1 - (2 * float(alpha))) / 2
-                sg.popup_ok(f'T-test(Z): {abs(Z_t):.4f} \nZ(Phi): {Z_phi:.4f}\n'
-                            '*Check laplass table to check if Z(t) > Z(Phi)', title='Answer', icon='math.ico')
+                sg.popup_ok(f'Z(t): {abs(Z_t):.4f} \nZ(Phi): {Z_phi:.4f}\n'
+                            '*Якщо Z(t) > Z(Phi) дивіться таблицю лапласа', title='В-дь', icon='icon/math.ico')
             else:
-                sg.popup('Тільки двовимірні', title='Упс..', icon='math.ico')
+                sg.popup('Тільки двовимірні', title='Упс..', icon='icon/math.ico')
         except:
             pass
 
     if event == 'Критерій узгодженості Пірсона':
         try:
             if dimension == 1:
-                sg.popup(f'Chi-Squared: {chi_squared(arr)}', title='Answer', icon='math.ico')
+                sg.popup(f'Хі-квадрат: {chi_squared(arr)}', title='В-дь', icon='icon/math.ico')
             else:
-                sg.popup('Only 1-dimension avalaible')
+                sg.popup('Тільки для одновимірних вибірок')
 
         except:
-            sg.popup('Щось пішло не так...', title='Упс..', icon='math.ico')
+            sg.popup('Щось пішло не так...', title='Упс..', icon='icon/math.ico')
 
     if event == 'Крит. узгодженості Колмогорова':
         try:
             if dimension == 1:
-                sg.popup(f'Kolmogorov-Smirnov(1-dim): {kolmogorov_1dim(arr)}', title='Answer', icon='math.ico')
+                sg.popup(f'Критерій Колмогорова(1-dim): {kolmogorov_1dim(arr)}', title='В-дь', icon='icon/math.ico')
             elif dimension == 2:
-                sg.popup(f'Kolmogorov-Smirnov(2-dim): {kolmogorov_2dim(arr, arr1)}', title='Answer',
-                         icon='math.ico')
+                sg.popup(f'Критерій Колмогорова(2-dim): {kolmogorov_2dim(arr, arr1)}', title='В-дь',
+                         icon='icon/math.ico')
             else:
-                sg.popup('Тільки одно/дво вимірні', title='Упс..', icon='math.ico')
+                sg.popup('Тільки одно/дво вимірні', title='Упс..', icon='icon/math.ico')
         except:
             pass
 
@@ -208,20 +211,20 @@ while True:
                 pvar = statistics.pvariance(arr)
                 pvar1 = statistics.pvariance(arr1)
                 if pvar > pvar1:
-                    sg.popup_ok(f'F-test: {pvar / pvar1:.4f}', title='Answer', icon='math.ico')
+                    sg.popup_ok(f'Ф-тест: {pvar / pvar1:.4f}', title='В-дь', icon='icon/math.ico')
                 else:
-                    sg.popup_ok(f'F-test: {pvar1 / pvar:.4f}', title='Answer', icon='math.ico')
+                    sg.popup_ok(f'Ф-тест: {pvar1 / pvar:.4f}', title='В-дь', icon='icon/math.ico')
             else:
-                sg.popup('Тільки для двовимірних', title='Упс..', icon='math.ico')
+                sg.popup('Тільки для двовимірних', title='Упс..', icon='icon/math.ico')
         except:
             pass
 
     if event == 'Бартлетта':
         try:
             if dimension == 2:
-                sg.popup(f'{bartletts(arr, arr1)}', title='Answer', icon='math.ico')
+                sg.popup(f'{bartletts(arr, arr1)}', title='В-дь', icon='icon/math.ico')
             else:
-                sg.popup('Тільки для двовимірних', title='Упс..', icon='math.ico')
+                sg.popup('Тільки для двовимірних', title='Упс..', icon='icon/math.ico')
         except:
             pass
 
@@ -229,21 +232,21 @@ while True:
         try:
             if dimension == 2:
                 w, p = stats.wilcoxon(arr, arr1)
-                sg.popup(f'W: {w:.4f}\npvalue: {p:.6f}', title='Answer', icon='math.ico')
+                sg.popup(f'W: {w:.4f}\npvalue: {p:.6f}', title='В-дь', icon='icon/math.ico')
             elif dimension == 1:
                 w, p = stats.wilcoxon(arr)
-                sg.popup(f'W: {w:.4f}\npvalue: {p:.6f}', title='Answer', icon='math.ico')
+                sg.popup(f'W: {w:.4f}\npvalue: {p:.6f}', title='В-дь', icon='icon/math.ico')
             else:
-                sg.popup('Тільки одно/дво вимірні ', title='Упс!.', icon='math.ico')
+                sg.popup('Тільки одно/дво вимірні ', title='Упс!.', icon='icon/math.ico')
         except:
             pass
 
     if event == 'Критерій знаків':
         try:
             if dimension == 1:
-                sg.popup_ok(f'{sign(arr)}', title='Answer', icon='math.ico')
+                sg.popup_ok(f'{sign(arr)}', title='В-дь', icon='icon/math.ico')
             else:
-                sg.popup_ok('Тільки для одновимірних', title='Упс..', icon='math.ico')
+                sg.popup_ok('Тільки для одновимірних', title='Упс..', icon='icon/math.ico')
         except:
             pass
 
@@ -251,9 +254,9 @@ while True:
         try:
             if df.shape[1] == 2:
                 fvalue, pvalue = stats.f_oneway(arr, arr1)
-                sg.popup(f'fvalue: {fvalue:.6f}\npvalue: {pvalue:.6f}', title='Answer', icon='math.ico')
+                sg.popup(f'F-значення: {fvalue:.6f}\np-значення: {pvalue:.6f}', title='В-дь', icon='icon/math.ico')
             else:
-                sg.popup('Тільки для двовимірних', title='Упс..', icon='math.ico')
+                sg.popup('Тільки для двовимірних', title='Упс..', icon='icon/math.ico')
         except:
             pass
 
@@ -261,48 +264,48 @@ while True:
         try:
             if df.shape[1] == 2:
                 st, pvalue = scipy.stats.kruskal(arr, arr1)
-                sg.popup(f'H: {st:.6f}\npvalue: {pvalue:.6f}', title='Answer', icon='math.ico')
+                sg.popup(f'H: {st:.6f}\np-значення: {pvalue:.6f}', title='В-дь', icon='icon/math.ico')
             else:
-                sg.popup('Тільки для двовимірних', title='Упс!.', icon='math.ico')
+                sg.popup('Тільки для двовимірних', title='Упс!.', icon='icon/math.ico')
         except:
             pass
 
-    if event == '2-виміри':
+    if event == '2-ознаки':
         try:
             if arr[0] is not None:
                 if df.shape[1] == 2:
                     try:
                         t, pvalue = stats.ttest_ind(arr, arr1)
-                        sg.popup_ok(f't: {t:.4f}\npvalue: {pvalue:.7f}', title='2-sample', icon='math.ico')
+                        sg.popup_ok(f't: {t:.4f}\np-значення: {pvalue:.7f}', title='2-виміри', icon='icon/math.ico')
                     finally:
                         pass
         except:
-            sg.popup_quick('Сталася помилка!', icon='math.ico')
+            sg.popup_quick('Сталася помилка!', icon='icon/math.ico')
             pass
 
-    # T-test (1 sample)
     if event == '1-ознака':
         try:
             if arr[0] is not None:
                 if df.shape[1] == 1:
-                    value = sg.PopupGetText('Value: ', default_text=f'{np.mean(arr):.4f}', title='Expected value',
-                                            icon='math.ico')
+                    value = sg.PopupGetText('Значення: ', default_text=f'{np.mean(arr):.4f}',
+                                            title='Очікуване значення',
+                                            icon='icon/math.ico')
                     diff = np.mean(arr) - float(value)
                     SE = statistics.stdev(arr) / pow(len(arr), 1 / 2)
                     t = diff / SE
                     try:
                         tscore, pvalue = stats.ttest_1samp(arr, float(value))
-                        sg.popup_ok(f't: {t:.4f}\nP-value: {pvalue:.4f}', title='Answer', icon='math.ico')
+                        sg.popup_ok(f't: {t:.4f}\nP-значення: {pvalue:.4f}', title='В-дь', icon='icon/math.ico')
                     finally:
                         pass
                 else:
-                    sg.popup('Only for 1-dimension', icon='math.ico')
+                    sg.popup('Тільк для одновимірних', icon='icon/math.ico')
         except:
-            sg.popup_quick('Сталася помилка!', icon='math.ico')
+            sg.popup_quick('Сталася помилка!', icon='icon/math.ico')
             pass
 
     """
-    Multidimensional events
+    Multi dim. events
     """
 
     if event == 'Діагн.діаграма розкиду':
@@ -311,19 +314,19 @@ while True:
             sns.pairplot(df, height=3)
             plt.show()
         except:
-            sg.popup('Щось пішло не так...', title='Упс..', icon='math.ico')
+            sg.popup('Щось пішло не так...', title='Упс..', icon='icon/math.ico')
             pass
 
     if event == 'Лінійна регресія':
         """
         try щоб прога не вилітала при кожній помилці, іф для роботи лише з N-вимір. вибірками
-        Як фичерсы беремо X. Будуємо площину через xx_pred,  yy_pred... Далі підставляємо модель, і будуємо графік 
+        Як фічерси беремо X. Будуємо площину через xx_pred,  yy_pred... Далі підставляємо модель, і будуємо графік 
         """
         try:
             if df.shape[1] > 2:
                 X, Y = ''.join(
-                    sg.popup_get_text('Attributes?', title='Attributes (Independent)', icon='math.ico').split())
-                col = ''.join(sg.popup_get_text('Label?', title='Label (Dependent)', icon='math.ico').split())
+                    sg.popup_get_text('Незалежні?', title='Attributes (Independent)', icon='icon/math.ico').split())
+                col = ''.join(sg.popup_get_text('Залежна?', title='Label (Dependent)', icon='icon/math.ico').split())
 
             X = df[[int(X), int(Y)]].values.reshape(-1, 2)
             Y = df[int(col[0])]
@@ -379,7 +382,8 @@ while True:
             fig.tight_layout()
             plt.show()
         except:
-            sg.popup('Тільки для багатовимірних!', title='Упс..', icon='math.ico')
+            if df.shape[1] <= 2:
+                sg.popup('Тільки для багатовимірних!', title='Упс..', icon='icon/math.ico')
             pass
 
     if event == 'Кор.Матр':
@@ -397,20 +401,20 @@ while True:
             cmap.set_bad('grey')
 
             sns.heatmap(corr, mask=mask, cmap=cmap, vmin=-1, vmax=1, center=0, linewidths=.5)
-            fig.suptitle('Pearson correlation coefficient matrix', fontsize=14)
+            fig.suptitle('Матриця кореляції пірсона', fontsize=14)
             ax.tick_params(axis='both', which='major', labelsize=10)
 
             plt.show()
         except:
-            sg.popup('Щось пішло не так...', title='Упс..', icon='math.ico')
+            sg.popup('Щось пішло не так...', title='Упс..', icon='icon/math.ico')
             pass
 
     if event == 'Частк.Кор.':
         try:
             save = ''
             if df.shape[1] > 2:
-                X, Y = ''.join(sg.popup_get_text('X,Y?', title='X,Y', icon='math.ico').split())
-                Z = ''.join(sg.popup_get_text('Z?', title='Z', icon='math.ico').split())
+                X, Y = ''.join(sg.popup_get_text('X,Y?', title='X,Y', icon='icon/math.ico').split())
+                Z = ''.join(sg.popup_get_text('Z?', title='Z', icon='icon/math.ico').split())
             import pingouin as pg
 
             p_corr = pg.partial_corr(data=df, x=int(X), y=int(Y), covar=int(Z)).round(3)
@@ -422,16 +426,16 @@ while True:
             else:
                 save += 'Значущий'
 
-            sg.popup(save, title='Відповідь:', icon='math.ico')
+            sg.popup(save, title='Відповідь:', icon='icon/math.ico')
         except:
-            sg.popup('Щось пішло не так...', title='Упс..', icon='math.ico')
+            sg.popup('Щось пішло не так...', title='Упс..', icon='icon/math.ico')
             pass
 
     if event == 'Множин.Кор.':
         try:
             if df.shape[1] > 2:
                 delete_n = int(
-                    ''.join(sg.popup_get_text('Choose:', title='Which array to delete?', icon='math.ico').split()))
+                    ''.join(sg.popup_get_text('Обрати:', title='Which array to delete?', icon='icon/math.ico').split()))
             corr = df.corr()
             det0 = np.linalg.det(corr)
             corr = corr.drop(corr.index[delete_n])
@@ -440,12 +444,12 @@ while True:
             f = ((len(df) - df.shape[1] - 1) / df.shape[1]) * (det0 / (1 - det0))
             if f > 0.05:
                 sg.popup_ok(f'Multiple.Correlation: {(1 - (det0 / det1)) ** 1 / 2:.3f}\nЗначущий', title='Corr',
-                            icon='math.ico')
+                            icon='icon/math.ico')
             else:
                 sg.popup_ok(f'Multiple.Correlation: {(1 - (det0 / det1)) ** 1 / 2:.3f}\nНе значущий', title='Corr',
-                            icon='math.ico')
+                            icon='icon/math.ico')
         except:
-            sg.popup('Щось пішло не так...', title='Упс..', icon='math.ico')
+            sg.popup('Щось пішло не так...', title='Упс..', icon='icon/math.ico')
             pass
 
     if event == 'Паралельні кординати':
@@ -462,7 +466,7 @@ while True:
             # plt.imshow(img)
             # plt.show()
         else:
-            sg.popup('Only for multi-dim', icon='math.ico')
+            sg.popup('Only for multi-dim', icon='icon/math.ico')
 
     if event == 'Діагностична діаграма':
         try:
@@ -475,7 +479,7 @@ while True:
             ax.set_ylabel('{col1}'.format(col1=col[1]))
             plt.show()
         except:
-            sg.popup('Щось пішло не так...', title='Упс..', icon='math.ico')
+            sg.popup('Щось пішло не так...', title='Упс..', icon='icon/math.ico')
             pass
 
     if event == 'Теплова карта':
@@ -483,15 +487,11 @@ while True:
             sns.heatmap(df[0:10], annot=True, fmt=".1f")
             plt.show()
         except:
-            sg.popup('Щось пішло не так...', title='Упс..', icon='math.ico')
+            sg.popup('Щось пішло не так...', title='Упс..', icon='icon/math.ico')
             pass
 
     if event == 'Бульбашковий':
         try:
-            """
-            Х,Y,Z ввод. користувачем, після чого Z перетвор. у матрицю цілих чисел
-            Робимо новий датафрейм з X,Y,Z користувача, колір рандом, розмір бульбашок - Z
-            """
 
             if df.shape[1] > 2:
                 X, Y = ''.join(sg.popup_get_text('Arguments(X,Y)?').split())
@@ -511,8 +511,61 @@ while True:
             plt.title("Bubble Plot ", size=18)
             plt.show()
         except:
-            sg.popup('Щось пішло не так...', title='Упс..', icon='math.ico')
+            sg.popup('Щось пішло не так...', title='Упс..', icon='icon/math.ico')
             pass
+
+    if event == 'МГК':
+        try:
+            # Отримуємо матрицю коваріації завдяки функції
+            matrix = cov_mat(df.to_numpy())
+            # Рахуємо власні числа та власні вектори
+            eigen_values, eigen_vectors = np.linalg.eigh(matrix)
+
+            # Сортуємо індекси, вектори та власні числа, щоб було зручно виводити
+            _ = np.argsort(eigen_values)[::-1]
+            sorted_eigenvalue = np.around(eigen_values[_], decimals=3)
+            sorted_eigenvectors = np.around(eigen_vectors[:, _], decimals=3)
+
+            window['-FILE-'].update(f'Власні вектори: \n{sorted_eigenvectors}\n\n Власні числа: \n{sorted_eigenvalue}\n\n Частка %: \n{cumulative_coef(eigen_values)}')
+            main_comp = int(''.join(sg.popup_get_text('К-сть головних компонент?', icon='icon/math.ico').split()))
+
+            ev_subset = sorted_eigenvectors[:, 0:main_comp]
+
+            # Трансформуємо дані. Скалярний добуток:(отримана вибірка^T * початкова вибірка^T)^T
+            transform_df = np.dot(ev_subset.transpose(), df.transpose()).transpose()
+
+            # Візуалізація
+            fig = plt.figure(figsize=(9, 5))
+            if main_comp == 2:
+                ax = fig.add_subplot(121)
+                ax.set_title('Normal')
+                sns.histplot(x=df[0], y=df[1], bins=12, alpha=0.65, cmap='coolwarm', cbar=True)
+                sns.scatterplot(x=df[0], y=df[1], s=25, color='black', alpha=0.6)
+
+                ax = fig.add_subplot(122)
+                ax.set_title('PCA')
+                sns.histplot(x=transform_df[:, 0], y=transform_df[:, 1], bins=10, alpha=0.65, cmap='coolwarm')
+                sns.scatterplot(x=transform_df[:, 0], y= transform_df[:, 1], s=25, color='black', alpha=0.65)
+
+            if main_comp == 3:
+                ax = plt.axes(projection='3d')
+
+                ax.set_title('PCA')
+                ax.set_xlabel('x', rotation=150)
+                ax.set_ylabel('y')
+                ax.set_zlabel('z', rotation=60)
+
+                ax.scatter3D(transform_df[:, 0], transform_df[:, 1], transform_df[:, 2], cmap='coolwarm')
+                ax.scatter3D(df[0], df[1], df[2])
+            plt.show()
+
+        except:
+            pass
+
+        try:
+            window['-FILE-'].update(df.head(len(df)))
+        except:
+            sg.popup('Немає даних', title='Ооу', icon='icon/math.ico')
 
     if event == sg.WIN_CLOSED or event == 'Вихід':
         break
