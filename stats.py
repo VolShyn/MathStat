@@ -40,7 +40,7 @@ def describing(df: pd.DataFrame, desc='') -> str:
     return desc
 
 
-def calc_cov(x, y) -> float:
+def calc_cov(x: np.array, y: np.array) -> float:
     mean_x, mean_y = x.mean(), y.mean()
     n = len(x)
 

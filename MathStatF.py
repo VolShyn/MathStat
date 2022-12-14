@@ -3,12 +3,12 @@ from one_dim import one_dim_analysis, one_dimens_graph
 from two_dim import two_dim_analysis, two_dimens_graph
 from stats import describing, find_anomalies, cov_mat, cumulative_coef
 import matplotlib.pyplot as plt
-from mpl_toolkits import mplot3d
 import numpy as np
 import seaborn as sns
 from sklearn import linear_model
 import PySimpleGUI as sg
 import pandas as pd
+import math
 
 # seaborn gives 'FutureWarning', importing warnings to get rid of it
 import warnings
@@ -18,7 +18,7 @@ warnings.simplefilter(action='ignore', category=FutureWarning)
 sg.theme("Default1")
 sg.SetOptions(element_padding=(3, 3))
 
-menu_def = [['Файл', ['Відкрити', 'Зберегти', 'Вихід']],
+menu_def = [['Файл', ['Відкрити', 'Зберегти']],
             ['Показати', ['Графік', '---', 'МГК', '---', 'Багатовимірні',
                           ['Діагн.діаграма розкиду', 'Лінійна регресія', 'Паралельні кординати', 'Теплова карта',
                            'Діагностична діаграма', 'Бульбашковий']]],
@@ -51,7 +51,7 @@ window = sg.Window('Математична статистика', layout, resiza
 while True:
     event, values = window.read()
     help_info(event)
-
+    df_copy  = pd.DataFrame()
     """
     Main events as Open, Save etc
     """
@@ -336,25 +336,6 @@ while True:
             z = Y
 
 
-            def estimate_coef(x, y):
-                # number of observations/points
-                n = np.size(x)
-
-                # mean of x and y vector
-                m_x = np.mean(x)
-                m_y = np.mean(y)
-
-                # calculating cross-deviation and deviation about x
-                SS_xy = np.sum(y * x) - n * m_y * m_x
-                SS_xx = np.sum(x * x) - n * m_x * m_x
-
-                # calculating regression coefficients
-                b_1 = SS_xy / SS_xx
-                b_0 = m_y - b_1 * m_x
-
-                return (b_0, b_1)
-
-
             xx_pred = np.linspace(np.min(x), np.max(x), 30)
             yy_pred = np.linspace(np.min(y), np.max(y), 30)
             xx_pred, yy_pred = np.meshgrid(xx_pred, yy_pred)
@@ -536,18 +517,50 @@ while True:
 
             # Візуалізація
             fig = plt.figure(figsize=(9, 5))
+            if main_comp == 1:
+                x1 = df[0] 
+                x2 = df[1]
+                # Отримуємо кореляцію та повертаємо лише значення кореляції x1x2
+                r_xy = df[[0,1]].corr()[1][0]
+                std_x1 = x1.std()
+                std_x2 = x2.std()
+                tg2phi = (2*r_xy* std_x1 * std_x2)/(pow(std_x1, 2) - pow(std_x2, 2))
+                phi = 1/2 * math.atan(tg2phi)
+                
+                
+                xeta = x1*math.cos(phi) + x2*math.sin(phi)
+                neta = -x1*math.sin(phi) + x2 * math.cos(phi)
+                
+                ax.set_title('PCA')
+                sns.histplot(data=x1, bins=10, alpha=0.65, cmap='coolwarm')
+                sns.scatterplot(data=x1, s=25, color='black', alpha=0.65)
             if main_comp == 2:
+                x1 = df[0] 
+                x2 = df[1]
+                # Отримуємо кореляцію та повертаємо лише значення кореляції x1x2
+                r_xy = df[[0,1]].corr()[1][0]
+                std_x1 = x1.std()
+                std_x2 = x2.std()
+                tg2phi = (2*r_xy* std_x1 * std_x2)/(pow(std_x1, 2) - pow(std_x2, 2))
+                phi = 1/2 * math.atan(tg2phi)
+                
+                
+                xeta = x1*math.cos(phi) + x2*math.sin(phi)
+                neta = -x1*math.sin(phi) + x2 * math.cos(phi)
+                
+                # -----------------------------------------------------------------------
+                
                 ax = fig.add_subplot(121)
                 ax.set_title('Normal')
-                sns.histplot(x=df[0], y=df[1], bins=12, alpha=0.65, cmap='coolwarm', cbar=True)
-                sns.scatterplot(x=df[0], y=df[1], s=25, color='black', alpha=0.6)
-
+                sns.histplot(x=x1, y=x2, bins=12, alpha=0.65, cmap='coolwarm', cbar=True)
+                sns.scatterplot(x=x1, y=x2, s=25, color='black', alpha=0.6)
+                
                 ax = fig.add_subplot(122)
                 ax.set_title('PCA')
-                sns.histplot(x=transform_df[:, 0], y=transform_df[:, 1], bins=10, alpha=0.65, cmap='coolwarm')
-                sns.scatterplot(x=transform_df[:, 0], y= transform_df[:, 1], s=25, color='black', alpha=0.65)
+                sns.histplot(x=xeta, y=neta, bins=10, alpha=0.65, cmap='coolwarm')
+                sns.scatterplot(x=xeta, y= neta, s=25, color='black', alpha=0.65)
 
-            if main_comp == 3:
+            elif main_comp == 3:
                 ax = plt.axes(projection='3d')
 
                 ax.set_title('PCA')
@@ -556,7 +569,8 @@ while True:
                 ax.set_zlabel('z', rotation=60)
 
                 ax.scatter3D(transform_df[:, 0], transform_df[:, 1], transform_df[:, 2], cmap='coolwarm')
-                ax.scatter3D(df[0], df[1], df[2])
+                # ax.scatter3D(df[0], df[1], df[2])
+
             plt.show()
 
         except:
@@ -567,5 +581,5 @@ while True:
         except:
             sg.popup('Немає даних', title='Ооу', icon='icon/math.ico')
 
-    if event == sg.WIN_CLOSED or event == 'Вихід':
+    if event == sg.WIN_CLOSED:
         break
